@@ -1,8 +1,13 @@
 # jev-axi
 
-[![ci](https://github.com/shiftynick/jev-axi/actions/workflows/ci.yml/badge.svg)](https://github.com/shiftynick/jev-axi/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/jev-axi?style=flat-square)](https://www.npmjs.com/package/jev-axi)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+
+This maintained fork records PostToolUse human-escalation judgments without
+adding a supervision note. Fork candidates are private builds identified by
+their source commit and archive digest; the public npm package is upstream and
+does not include this correction. See [fork maintenance](docs/fork-maintenance.md)
+for the build, qualification, and adoption requirements. Each candidate requires
+native Claude and Codex qualification.
 
 **A second opinion for coding agents, in half a second.** jev-axi is a CLI for
 [TypeSafe's Jev](https://docs.typesafe.ai/introduction), a model that never writes
@@ -93,6 +98,12 @@ direction. Answering a question still meant reading the code, so use jev-axi for
 judgments, not as a replacement for reading. The full writeup, including the more
 interesting result that the agent never loaded the skill unprompted, is in
 [docs/skills-do-not-get-used.md](docs/skills-do-not-get-used.md).
+
+## Install the upstream release
+
+These commands install [upstream Jev](https://github.com/shiftynick/jev-axi),
+not this fork candidate. To build this fork, check out the selected commit and
+follow [Build and qualification](docs/fork-maintenance.md#build-and-qualification).
 
 ```sh
 npm install -g jev-axi        # or: npx -y jev-axi ...

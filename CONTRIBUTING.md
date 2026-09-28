@@ -45,11 +45,12 @@ with the fake API in `test/`.
 - `pnpm test`, `pnpm lint`, and `pnpm check:skill` must pass; CI runs them.
 - Never commit an API key. `.env` is gitignored; keep it that way.
 
-## Releasing
+## Fork candidates
 
-Bump `version` in `package.json` and `src/version.ts` (a test fails if they
-disagree), commit and push, then create a GitHub release with a matching
-`vX.Y.Z` tag. The publish workflow refuses to run if the tag and version differ. The `publish` workflow runs lint, tests,
-and build, then publishes to npm with provenance. Authentication uses npm
-trusted publishing (GitHub OIDC), configured on the package's npm settings
-page, so no token is stored in the repository.
+This fork builds private candidates and has no npm release workflow. Follow
+[Build and qualification](docs/fork-maintenance.md#build-and-qualification) to
+validate and package a selected commit. A registry release or live-hook switch
+requires the separate decision described there.
+
+Keep fork maintenance changes separate from a proposed upstream contribution.
+Submit upstream only after Ivan approves the concrete submission.
