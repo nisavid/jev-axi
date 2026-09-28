@@ -283,8 +283,9 @@ jev-axi setup supervise --remove
   most recent tool output are scored: implementation complete, tests sufficient, requirements
   satisfied, needs verification. Turns with no changes cost nothing.
 - **PostToolUse hook.** The last 30 tool calls are kept locally. Every 10 calls they are scored
-  for: stuck in a loop, off track, blocked on a person. A concern adds a note to the agent's
-  context; it never blocks.
+  for: stuck in a loop, off track, blocked on a person. A `steer` verdict adds a note to the
+  agent's context. An `escalate` verdict is recorded without a note; the agent decides when
+  to ask for input. This hook never blocks.
 - **Fixed policy.** Jev only scores. A short ordered policy picks the verdict: a person is needed
   (`escalate`), stuck or off track (`steer`), then `continue`, `verify`, or `finish`. Scores
   between the thresholds count as unclear, and the hooks say nothing.

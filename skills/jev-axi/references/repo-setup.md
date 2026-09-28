@@ -105,9 +105,9 @@ jev-axi setup supervise --remove --project
 - **Stop hook:** when a turn ends and the repository changed during the session, scores the job
   against the diff and recent tool output. On a clear signal it shows the user a warning. Turns
   with no changes make no API call; mid-range scores say nothing.
-- **PostToolUse hook:** keeps the last 30 tool calls locally and scores them every 10 calls. When
-  the agent looks stuck, off track, or blocked on a person, it adds a note to the agent's context.
-  It never blocks.
+- **PostToolUse hook:** keeps the last 30 tool calls locally and scores them every 10 calls. A
+  `steer` verdict adds a note to the agent's context. An `escalate` verdict is recorded without a
+  note; the agent decides when to ask for input. This hook never blocks.
 - **Install warn-only.** The scores are not calibrated for the project, and a wrong "not done"
   sends an agent back to finished work. Suggest `--block` only after the user has looked at the
   `supervise` section of `jev-axi stats` from real sessions (the full log is
