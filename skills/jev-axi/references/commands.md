@@ -265,8 +265,8 @@ hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session start
 safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
-         warns if it looks unfinished or unverified; during work, notes when the agent looks stuck, off track, or
-         blocked on a person. Warn-only unless --block. See `jev-axi hook --help`.
+         warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
+         is recorded without a note. Warn-only unless --block. See `jev-axi hook --help`.
 agent    Claude Code subagent `jev-explore` that ranks files with jev-axi before reading them, for broad exploration.
          Claude Code tends to explore inside subagents, which never see skills or session hooks; this puts jev-axi there.
 git-hooks  pre-commit and commit-msg hooks in the current repository: blocks commits that add credentials (found
@@ -295,8 +295,8 @@ hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session start
 safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
-         warns if it looks unfinished or unverified; during work, notes when the agent looks stuck, off track, or
-         blocked on a person. Warn-only unless --block. See `jev-axi hook --help`.
+         warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
+         is recorded without a note. Warn-only unless --block. See `jev-axi hook --help`.
 agent    Claude Code subagent `jev-explore` that ranks files with jev-axi before reading them, for broad exploration.
          Claude Code tends to explore inside subagents, which never see skills or session hooks; this puts jev-axi there.
 git-hooks  pre-commit and commit-msg hooks in the current repository: blocks commits that add credentials (found
@@ -340,8 +340,8 @@ hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session start
 safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
-         warns if it looks unfinished or unverified; during work, notes when the agent looks stuck, off track, or
-         blocked on a person. Warn-only unless --block. See `jev-axi hook --help`.
+         warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
+         is recorded without a note. Warn-only unless --block. See `jev-axi hook --help`.
 agent    Claude Code subagent `jev-explore` that ranks files with jev-axi before reading them, for broad exploration.
          Claude Code tends to explore inside subagents, which never see skills or session hooks; this puts jev-axi there.
 git-hooks  pre-commit and commit-msg hooks in the current repository: blocks commits that add credentials (found
@@ -370,8 +370,8 @@ hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session start
 safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
-         warns if it looks unfinished or unverified; during work, notes when the agent looks stuck, off track, or
-         blocked on a person. Warn-only unless --block. See `jev-axi hook --help`.
+         warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
+         is recorded without a note. Warn-only unless --block. See `jev-axi hook --help`.
 agent    Claude Code subagent `jev-explore` that ranks files with jev-axi before reading them, for broad exploration.
          Claude Code tends to explore inside subagents, which never see skills or session hooks; this puts jev-axi there.
 git-hooks  pre-commit and commit-msg hooks in the current repository: blocks commits that add credentials (found
@@ -504,7 +504,8 @@ supervision hooks for Claude Code and Codex (install: jev-axi setup supervise [-
                        transcript is implemented, tested, and verified. Warns the user on a clear signal only; with --block it
                        sends the agent back to work once per stop, with the reason. Turns with no changes are skipped.
   post-tool-use        keeps the last 30 tool calls of the session locally and, every 10 calls (--every <n>), scores whether
-                       the agent is stuck, off track, or blocked on a person. Adds a note to the agent's context; never blocks.
+                       the agent is stuck, off track, or blocked on a person. A steer verdict adds a note; never blocks.
+                       An escalate verdict is recorded without a note; the agent decides when to ask for input.
   Both send a bounded, secret-redacted snapshot to Jev, stay silent on any error, and log every verdict, spoken or
   not, to stats/supervise.jsonl (summarized by `jev-axi stats`). Tool calls the agent was denied are not seen.
 git hooks (install: jev-axi setup git-hooks):

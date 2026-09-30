@@ -204,6 +204,28 @@ describe("hook post-tool-use", () => {
     expect(Object.keys(api.requests[0].questions)).toContain("worker_stuck");
     expect(JSON.parse(out).hookSpecificOutput.additionalContext).toContain("stuck");
   });
+  it("records an escalation without a post-tool-use note", async () => {
+    configureFetch(fakeApi({ needs_human: 0.9, worker_stuck: 0.95, work_off_track: 0.85 }).fetch);
+    await main(["hook", "post-tool-use", "--every", "1", "--input", JSON.stringify({
+      session_id: "s3", transcript_path: transcript(), cwd: dir,
+      tool_name: "Bash", tool_input: { command: "npm test" }, tool_response: { stdout: "still failing" },
+    })], stdout);
+    expect(out).toBe("");
+    const record = JSON.parse(readFileSync(join(dir, ".x", "config", "jev-axi", "stats", "supervise.jsonl"), "utf8"));
+    expect(record).toMatchObject({
+      hook: "post-tool-use", verdict: "escalate", action: "none",
+      needs_human: 0.9, worker_stuck: 0.95, work_off_track: 0.85,
+    });
+  });
+  it("explains a silent escalation without writing a supervision decision log", async () => {
+    configureFetch(fakeApi({ needs_human: 0.9 }).fetch);
+    await main(["hook", "post-tool-use", "--every", "1", "--explain", "--json", "--input", JSON.stringify({
+      session_id: "s4", transcript_path: transcript(), cwd: dir,
+      tool_name: "Bash", tool_input: { command: "npm test" }, tool_response: { stdout: "still failing" },
+    })], stdout);
+    expect(JSON.parse(out)).toMatchObject({ verdict: "escalate", needs_human: 0.9, action: "none" });
+    expect(existsSync(join(dir, ".x", "config", "jev-axi", "stats", "supervise.jsonl"))).toBe(false);
+  });
 });
 
 describe("setup supervise", () => {

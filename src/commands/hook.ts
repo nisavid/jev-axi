@@ -32,7 +32,8 @@ supervision hooks for Claude Code and Codex (install: jev-axi setup supervise [-
                        transcript is implemented, tested, and verified. Warns the user on a clear signal only; with --block it
                        sends the agent back to work once per stop, with the reason. Turns with no changes are skipped.
   post-tool-use        keeps the last ${PROGRESS_THRESHOLDS.events} tool calls of the session locally and, every ${PROGRESS_THRESHOLDS.every} calls (--every <n>), scores whether
-                       the agent is stuck, off track, or blocked on a person. Adds a note to the agent's context; never blocks.
+                       the agent is stuck, off track, or blocked on a person. A steer verdict adds a note; never blocks.
+                       An escalate verdict is recorded without a note; the agent decides when to ask for input.
   Both send a bounded, secret-redacted snapshot to Jev, stay silent on any error, and log every verdict, spoken or
   not, to stats/supervise.jsonl (summarized by \`jev-axi stats\`). Tool calls the agent was denied are not seen.
 ${GIT_HOOKS_HELP}
@@ -187,7 +188,8 @@ async function superviseHook(name: "stop" | "post-tool-use", args: string[]): Pr
     return explain({ skipped: (error as Error).message }, "");
   }
   // Speak only on a clear signal: mid-range scores (a vague job, a partial diff) are not worth an interruption.
-  const quiet = a.verdict === "finish" || a.unclear || (name === "post-tool-use" && a.verdict === "continue");
+  // Keep PostToolUse escalation in the record; the agent decides when it needs input.
+  const quiet = a.verdict === "finish" || a.unclear || (name === "post-tool-use" && (a.verdict === "continue" || a.verdict === "escalate"));
   const action = quiet ? "none" : name === "post-tool-use" ? "note" : p.bools["--block"] && (a.verdict === "continue" || a.verdict === "verify") ? "block" : "warn";
   // A replay by hand is not a session event: keep it out of the log that calibration reads.
   if (!p.bools["--explain"]) logDecision({ hook: name, verdict: a.verdict, ...(a.unclear ? { unclear: true } : {}), action, reason: a.reason, cwd, ...a.scores }, "supervise");
@@ -195,7 +197,7 @@ async function superviseHook(name: "stop" | "post-tool-use", args: string[]): Pr
   if (action === "none") return explain(view, "");
   const note = `jev-axi supervision: ${a.reason}.`;
   if (action === "note") {
-    const advice = a.verdict === "escalate" ? " Stop and ask the user before going further." : " Reconsider the approach against the original request; ignore this note if it is wrong.";
+    const advice = " Reconsider the approach against the original request; ignore this note if it is wrong.";
     return explain(view, JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: note + advice } }));
   }
   const out = action === "block" ? { decision: "block", reason: `${note} Finish or verify the work, or explain to the user why it is already complete.` } : { systemMessage: note };
