@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -58,6 +58,33 @@ describe("guard-exec", () => {
     await main(["guard-exec", "--quiet", "--", ...node(`require("fs").writeFileSync(${JSON.stringify(marker)}, "x")`)], stdout);
     expect(process.exitCode).toBe(BLOCKED_EXIT);
     expect(existsSync(marker)).toBe(false);
+  });
+
+  it("evaluates and blocks a one-string background-operator payload before shell execution", async () => {
+    const calls = fakeApi(0.95, 2);
+    const command = `echo safe & "${process.execPath}" -e "require('node:fs').writeFileSync('background-marker', 'x')"`;
+    await main(["guard-exec", "--quiet", "--", command], stdout);
+    expect(calls()).toBe(1);
+    expect(process.exitCode).toBe(BLOCKED_EXIT);
+    expect(existsSync(join(dir, "background-marker"))).toBe(false);
+  });
+
+  it("keeps a routine command local on POSIX and preserves evaluation on Windows", async () => {
+    const calls = fakeApi(0.05, 0);
+    await main(["guard-exec", "--dry-run", "--", "git status"], stdout);
+    expect(calls()).toBe(process.platform === "win32" ? 1 : 0);
+    expect(out).toContain(`source: ${process.platform === "win32" ? "jev" : "local"}`);
+    expect(out).toContain("would_run: yes");
+  });
+
+  it("preserves literal shell punctuation in direct argv execution", async () => {
+    const calls = fakeApi(0.05, 0);
+    const argument = "literal & touch argv-marker";
+    await main(["guard-exec", "--", ...node("require('node:fs').writeFileSync('argv-value', process.argv[1])"), argument], stdout);
+    expect(calls()).toBe(1);
+    expect(process.exitCode).toBe(0);
+    expect(readFileSync(join(dir, "argv-value"), "utf8")).toBe(argument);
+    expect(existsSync(join(dir, "argv-marker"))).toBe(false);
   });
 
   it("treats an ask as a block when unattended, unless --on-ask allow", async () => {
