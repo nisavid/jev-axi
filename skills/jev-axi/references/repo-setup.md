@@ -78,8 +78,13 @@ jev-axi setup safety --project --agent codex  # Codex: .codex/hooks.json
 jev-axi setup safety --remove --project     # uninstall
 ```
 
-- Checks `Bash`, `Write`, `Edit`, and `MultiEdit` calls. Routine calls (reads, the project's own
-  tests and builds, edits inside the project) are decided locally with no API call.
+- Checks `Bash`, `Write`, `Edit`, and `MultiEdit` calls. Recognized literal POSIX commands with
+  supported command and option forms, the project's own tests and builds, and edits inside
+  the project are decided locally with no API call. Unsupported commands, options, and shell
+  syntax (including background execution, expansions, redirections, and comments) go to Jev.
+  All nonempty Windows shell commands and plain `npx`/`pnpx` invocations are evaluated;
+  `npx --no-install tsc --noEmit` can stay local. Local decisions assume trusted executables,
+  Git configuration, and project code.
 - Blocks strong destructive, exfiltration, remote-code, or security-weakening signals; asks the
   user on moderate ones; otherwise stays silent. It never auto-approves.
 - **What leaves the machine:** the command (credentials redacted) and the contents of local
