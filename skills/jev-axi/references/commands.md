@@ -262,7 +262,7 @@ Warn when an agent stops early, gets stuck, or drifts.
 ```
 usage: jev-axi setup hooks [--project] | setup safety [--project] [--agent claude|codex] [--remove] | setup supervise [--project] [--agent claude|codex] [--block] [--remove] | setup agent [--project] [--replace-explore] [--remove] | setup git-hooks [--remove] | setup status [--project]
 hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session starts with jev-axi context.
-safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
+safety   PreToolUse hook that checks Bash commands and file edits before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
          warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
@@ -292,7 +292,7 @@ Warn when an agent stops early, gets stuck, or drifts.
 ```
 usage: jev-axi setup hooks [--project] | setup safety [--project] [--agent claude|codex] [--remove] | setup supervise [--project] [--agent claude|codex] [--block] [--remove] | setup agent [--project] [--replace-explore] [--remove] | setup git-hooks [--remove] | setup status [--project]
 hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session starts with jev-axi context.
-safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
+safety   PreToolUse hook that checks Bash commands and file edits before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
          warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
@@ -337,7 +337,7 @@ Warn when an agent stops early, gets stuck, or drifts.
 ```
 usage: jev-axi setup hooks [--project] | setup safety [--project] [--agent claude|codex] [--remove] | setup supervise [--project] [--agent claude|codex] [--block] [--remove] | setup agent [--project] [--replace-explore] [--remove] | setup git-hooks [--remove] | setup status [--project]
 hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session starts with jev-axi context.
-safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
+safety   PreToolUse hook that checks Bash commands and file edits before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
          warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
@@ -367,7 +367,7 @@ Warn when an agent stops early, gets stuck, or drifts.
 ```
 usage: jev-axi setup hooks [--project] | setup safety [--project] [--agent claude|codex] [--remove] | setup supervise [--project] [--agent claude|codex] [--block] [--remove] | setup agent [--project] [--replace-explore] [--remove] | setup git-hooks [--remove] | setup status [--project]
 hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session starts with jev-axi context.
-safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
+safety   PreToolUse hook that checks Bash commands and file edits before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See `jev-axi hook --help`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
          warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict

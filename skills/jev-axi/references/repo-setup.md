@@ -70,7 +70,9 @@ install those. Don't add others alongside them; mention one if it clearly fits, 
 
 ## Agent safety hook
 
-**For:** agents (Claude Code, Codex) about to run commands or edit files outside the project.
+**For:** agents (Claude Code, Codex) about to run commands or edit files, including inside the project
+or system temporary directories. The hook decides recognized routine calls locally and sends other
+calls to Jev as described below.
 
 ```sh
 jev-axi setup safety --project              # Claude Code, this repo: .claude/settings.json
