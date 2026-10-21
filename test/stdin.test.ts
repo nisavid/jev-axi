@@ -6,12 +6,15 @@ import { describe, expect, it } from "vitest";
 import { stdinKind } from "../src/stdin.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const TSX = join(ROOT, "node_modules", "tsx", "dist", "cli.mjs");
+// Use the public loader entry, resolved here because child processes run in temp dirs.
+// The tsx CLI starts an IPC listener even for a one-shot run; these tests only need
+// TypeScript loading and must work in environments that prohibit local sockets.
+const TSX = import.meta.resolve("tsx");
 const BIN = join(ROOT, "bin", "jev-axi.ts");
 
 /** Run the CLI the way an agent harness does: non-interactive, stdin attached to /dev/null (or NUL). */
 function runAgentStyle(args: string[], cwd: string) {
-  const r = spawnSync(process.execPath, [TSX, BIN, ...args], {
+  const r = spawnSync(process.execPath, ["--import", TSX, BIN, ...args], {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
@@ -62,7 +65,7 @@ describe("stdin held open but idle", () => {
     const dir = mkdtempSync(join(tmpdir(), "jev-stdin-"));
     spawnSync("git", ["init", "-q"], { cwd: dir });
     // stdio "pipe" and never ending stdin is what several agent harnesses hand a child.
-    const child = spawn(process.execPath, [TSX, BIN, "diff"], {
+    const child = spawn(process.execPath, ["--import", TSX, BIN, "diff"], {
       cwd: dir,
       stdio: ["pipe", "pipe", "ignore"],
       env: { ...process.env, TYPESAFE_API_KEY: "unused", XDG_CONFIG_HOME: join(dir, ".cfg"), XDG_CACHE_HOME: join(dir, ".cache") },
@@ -78,7 +81,7 @@ describe("stdin held open but idle", () => {
   // Needs a POSIX shell pipeline; under Windows the runner's `sh` hands node a stdin that was never treated as piped input.
   it.skipIf(process.platform === "win32")("still reads a pipe whose producer is slow to start", () => {
     const dir = mkdtempSync(join(tmpdir(), "jev-stdin-"));
-    const r = spawnSync("sh", ["-c", `(sleep 2; echo hello; echo world) | "${process.execPath}" "${TSX}" "${BIN}" rank q`], {
+    const r = spawnSync("sh", ["-c", `(sleep 2; echo hello; echo world) | "${process.execPath}" --import "${TSX}" "${BIN}" rank q`], {
       cwd: dir,
       encoding: "utf8",
       env: { ...process.env, TYPESAFE_API_KEY: "", XDG_CONFIG_HOME: join(dir, ".cfg"), XDG_CACHE_HOME: join(dir, ".cache") },
