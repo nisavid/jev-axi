@@ -77,6 +77,7 @@ const SEARCH_FLAGS = /^-[EFGFinHhRrsvwxcoulqa]+$/;
 const PROJECT_SCRIPT = /^(test|lint|typecheck|check|format:check|build)$/;
 const REBUILDABLE = /^(\.\/)?(node_modules|dist|build|out|\.next|\.nuxt|\.turbo|\.cache|coverage|target|__pycache__|\.pytest_cache|\.venv|venv|tmp)\/?$/;
 
+/** Validate supported Git subcommands and arguments, assuming trusted local Git configuration. */
 function routineGit(args: string[]): boolean {
   const [sub, ...rest] = args;
   switch (sub) {
@@ -103,6 +104,7 @@ function routineGit(args: string[]): boolean {
   }
 }
 
+/** Validate one literal argv against the supported utility and trusted project-workflow forms. */
 function routineCommand(argv: string[]): boolean {
   const [cmd, ...args] = argv;
   switch (cmd) {
@@ -160,6 +162,7 @@ function routineCommand(argv: string[]): boolean {
   }
 }
 
+/** Allow only fully recognized POSIX commands; native Windows shell commands require evaluation. */
 export function isRoutineShellCommand(command: string): boolean {
   // guard-exec uses cmd.exe on Windows. POSIX quoting cannot establish what it runs.
   if (process.platform === "win32") return false;
