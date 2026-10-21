@@ -77,6 +77,15 @@ describe("guard-exec", () => {
     expect(out).toContain("would_run: yes");
   });
 
+  it("evaluates parent-directory test paths before guard-exec can run them", async () => {
+    const calls = fakeApi(0.95, 2);
+    await main(["guard-exec", "--dry-run", "--", "pnpm test -- --run ../../tmp/payload.test.ts"], stdout);
+    expect(calls()).toBe(1);
+    expect(process.exitCode).toBe(BLOCKED_EXIT);
+    expect(out).toContain("source: jev");
+    expect(out).toContain("would_run: no");
+  });
+
   it("preserves literal shell punctuation in direct argv execution", async () => {
     const calls = fakeApi(0.05, 0);
     const argument = "literal & touch argv-marker";

@@ -144,7 +144,7 @@ function routineCommand(argv: string[]): boolean {
       const scriptArgs = args[0] === "run" ? args.slice(1) : args;
       if (PROJECT_SCRIPT.test(scriptArgs[0] ?? "")) {
         return scriptArgs.length === 1 || (scriptArgs[0] === "test" && scriptArgs[1] === "--" && scriptArgs[2] === "--run"
-          && scriptArgs.slice(3).every((a) => /^(?:\.\/)?[\w./-]+$/.test(a) && !a.startsWith("-") && !a.startsWith("/")));
+          && scriptArgs.slice(3).every((a) => /^(?:\.\/)?[\w./-]+$/.test(a) && !a.startsWith("-") && !a.startsWith("/") && !a.split("/").includes("..")));
       }
       return /^(install|i|ci)$/.test(args[0] ?? "")
         && args.slice(1).every((a) => ["--frozen-lockfile", "--ignore-scripts", "--offline", "--prefer-offline"].includes(a));

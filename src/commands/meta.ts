@@ -258,8 +258,9 @@ export async function setupCommand(args: string[]): Promise<AxiRenderable> {
       ? []
       : [
           "Restart the agent session to activate it",
-          "Recognized literal POSIX commands with supported command and option forms, project tests/builds, and edits inside the project stay local; local decisions assume trusted executables, Git configuration, and project code",
-          "Unsupported commands, options, or shell syntax (background execution, expansions, redirections, comments), all nonempty Windows shell commands, plain npx/pnpx invocations, and edits outside the project are sent to TypeSafe's API with secrets redacted",
+          "Recognized literal POSIX commands with supported command and option forms, project tests/builds, and non-sensitive edits inside the project or system temporary directories (including /tmp) stay local; local decisions assume trusted executables, Git configuration, and project code",
+          "Unsupported commands, options, or shell syntax (background execution, expansions, redirections, comments), all nonempty Windows shell commands, plain npx/pnpx invocations, sensitive edits, and other edits outside the project are sent to TypeSafe's API with secrets redacted",
+          "Explicit test paths must be relative and contain no parent-directory (..) components",
           "The explicit npx --no-install tsc --noEmit form can stay local",
           "Test it: echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf ~/\"}}' | jev-axi hook pre-tool-use --explain",
         ];

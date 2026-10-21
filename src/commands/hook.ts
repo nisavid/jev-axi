@@ -18,8 +18,10 @@ export const HOOK_HELP = `usage: jev-axi hook pre-tool-use [--agent claude|codex
        jev-axi hook pre-push [--block-on flags|none] [--range <a..b>]
 Safety check for a tool call an agent is about to make, run as a PreToolUse hook. Reads the hook JSON on stdin.
 Recognized literal POSIX commands with supported command and option forms, the project's tests and builds,
-and edits inside the project are decided locally with no API call. Unsupported commands, options, and shell
-syntax (including background execution, expansions, redirections, and comments) are sent to Jev. All nonempty
+and non-sensitive edits inside the project or system temporary directories (including /tmp) are decided locally
+with no API call. Explicit test paths must be relative and contain no parent-directory (..) components.
+Unsupported commands, options, and shell syntax (including background execution, expansions, redirections,
+and comments) are sent to Jev. All nonempty
 Windows shell commands and plain npx/pnpx invocations are evaluated; npx --no-install tsc --noEmit can stay local.
 Local decisions assume trusted executables, Git configuration, and project code. Other calls are sent to Jev
 with secrets redacted and scored for destructive actions, exfiltration, running downloaded code, weakening
