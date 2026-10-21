@@ -218,7 +218,7 @@ function statsView(): Record<string, unknown> {
 
 export const SETUP_HELP = `usage: jev-axi setup hooks [--project] | setup safety [--project] [--agent claude|codex] [--remove] | setup supervise [--project] [--agent claude|codex] [--block] [--remove] | setup agent [--project] [--replace-explore] [--remove] | setup git-hooks [--remove] | setup status [--project]
 hooks    SessionStart hooks (Claude Code, Codex, OpenCode) so each session starts with jev-axi context.
-safety   PreToolUse hook that checks Bash commands and edits outside the project before they run, and blocks or asks
+safety   PreToolUse hook that checks Bash commands and file edits before they run, and blocks or asks
          about destructive, exfiltrating, or security-weakening calls. Routine calls are decided locally. See \`jev-axi hook --help\`.
 supervise  Stop and PostToolUse hooks for Claude Code or Codex: when the agent ends a turn, checks the changes against the job and
          warns if it looks unfinished or unverified. During work, a steer verdict adds a note; an escalate verdict
@@ -258,7 +258,11 @@ export async function setupCommand(args: string[]): Promise<AxiRenderable> {
       ? []
       : [
           "Restart the agent session to activate it",
-          "Commands and edits outside the project are sent to TypeSafe's API with secrets redacted; routine calls never leave the machine",
+          "Recognized literal POSIX commands with supported command and option forms, project tests/builds, and non-sensitive edits inside the project or system temporary directories (including /tmp) stay local; local decisions assume trusted executables, Git configuration, and project code",
+          "Unsupported commands, options, or shell syntax (background execution, expansions, redirections, comments), all nonempty Windows shell commands, plain npx/pnpx invocations, sensitive edits, and other edits outside the project are sent to TypeSafe's API with secrets redacted",
+          "Explicit test paths must be relative and contain no parent-directory (..) components",
+          "All rm commands require evaluation, including deletion of directories with build or temporary names",
+          "The explicit npx --no-install tsc --noEmit form can stay local",
           "Test it: echo '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"rm -rf ~/\"}}' | jev-axi hook pre-tool-use --explain",
         ];
     return { safety: { status, agent, scope, file }, ...(help.length ? { help } : {}) };

@@ -38,13 +38,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx bin/jev-axi.ts",
+    "dev": "node --import tsx bin/jev-axi.ts",
     "test": "vitest run",
-    "build:skill": "tsx scripts/build-skill.ts",
-    "check:skill": "tsx scripts/build-skill.ts --check",
+    "build:skill": "node --import tsx scripts/build-skill.ts",
+    "check:skill": "node --import tsx scripts/build-skill.ts --check",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "eval": "tsx bench/eval.ts"
+    "eval": "node --import tsx bench/eval.ts"
   },
   "dependencies": {
     "@toon-format/toon": "^4.1.1",

@@ -17,9 +17,16 @@ export const HOOK_HELP = `usage: jev-axi hook pre-tool-use [--agent claude|codex
        jev-axi hook pre-commit [--block-on secrets|flags|none]   |   jev-axi hook commit-msg <file> [--strict]
        jev-axi hook pre-push [--block-on flags|none] [--range <a..b>]
 Safety check for a tool call an agent is about to make, run as a PreToolUse hook. Reads the hook JSON on stdin.
-Routine calls (read-only commands, the project's tests and builds, edits inside the project) are decided locally with
-no API call. Other calls are sent to Jev with secrets redacted and scored for destructive actions, exfiltration,
-running downloaded code, weakening security, and changes outside the project.
+Recognized literal POSIX commands with supported command and option forms, the project's tests and builds,
+and non-sensitive edits inside the project or system temporary directories (including /tmp) are decided locally
+with no API call. Explicit test paths must be relative and contain no parent-directory (..) components.
+All rm commands require evaluation, including deletion of directories with build or temporary names.
+Unsupported commands, options, and shell syntax (including background execution, expansions, redirections,
+and comments) are sent to Jev. All nonempty
+Windows shell commands and plain npx/pnpx invocations are evaluated; npx --no-install tsc --noEmit can stay local.
+Local decisions assume trusted executables, Git configuration, and project code. Other calls are sent to Jev
+with secrets redacted and scored for destructive actions, exfiltration, running downloaded code, weakening
+security, and changes outside the project.
 output: nothing (normal permission flow applies; never auto-approves), or a PreToolUse decision JSON to ask or deny.
 flags:
   --agent <name>       output format: claude (default) or codex (Codex supports only deny, so ask becomes deny)

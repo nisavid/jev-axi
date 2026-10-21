@@ -243,13 +243,23 @@ jev-axi setup safety --agent codex        # Codex, user level (~/.codex/hooks.js
 jev-axi setup safety --remove             # uninstall
 ```
 
-Installs a `PreToolUse` hook that checks each `Bash` command, and each edit outside the
-project, before it runs:
+Installs a `PreToolUse` hook that checks each `Bash` command and file-edit call before it runs:
 
-- **Routine calls never leave the machine:** read-only commands, the project's tests and
-  builds, installing declared dependencies, deleting build folders, and edits inside the
-  project are decided locally. Anything with command substitution, redirection, `eval`, or
-  `sudo` always gets a real check.
+- **Recognized routine calls stay local:** supported literal POSIX read commands, project
+  test/build invocations, declared-dependency installs, and non-sensitive
+  edits inside the project or system temporary directories (including `/tmp`) are decided
+  locally. Sensitive edits and other edits outside the project go to Jev.
+  The shell fast path checks complete command and
+  option forms; unsupported commands or options go to Jev. Background execution, expansions,
+  redirections, comments, and other unsupported shell syntax also get a real check. Quoted
+  literal punctuation remains data. On Windows, all nonempty shell commands go to Jev,
+  because the POSIX fast path does not parse the native Windows shell.
+  Local decisions assume trusted executables, local Git configuration, and project code:
+  declared tests/builds and dependency installs intentionally run that code. Explicit test-file
+  arguments must be relative and contain no `..` path components. Plain
+  `npx`/`pnpx` invocations are evaluated because they can download code; the explicit
+  `npx --no-install tsc --noEmit` form can stay local. All `rm` commands require evaluation,
+  including deletion of directories with build or temporary names.
 - **Everything else is sent to Jev** with credentials redacted (API keys, tokens, passwords,
   connection strings, private keys), together with the contents of any local script the
   command runs, so a harmless-looking `./scripts/cleanup.sh` is judged by what it does.

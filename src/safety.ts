@@ -13,6 +13,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { EntryType } from "@typesafe-ai/sdk";
+import { isRoutineShellCommand } from "./routine-shell.js";
 
 export type Decision = "allow" | "ask" | "deny";
 
@@ -90,62 +91,6 @@ export function redactSecrets(text: string): string {
 
 // ------------------------------------------------------------------ local fast path
 
-const SIMPLE_READ_COMMANDS = new Set([
-  "ls", "pwd", "cat", "head", "tail", "wc", "grep", "rg", "egrep", "fgrep", "sort", "uniq", "cut", "tr", "jq",
-  "which", "echo", "printf", "date", "stat", "file", "du", "df", "tree", "basename", "dirname", "realpath",
-  "diff", "cd", "true", "nl", "column", "whoami", "uname", "tsc", "vitest", "eslint", "pytest", "mypy",
-]);
-const GIT_READ = new Set(["status", "log", "diff", "show", "rev-parse", "ls-files", "blame", "grep", "describe", "shortlog", "branch", "remote", "fetch", "stash list"]);
-const PKG_SCRIPTS = /^(test|lint|typecheck|check|format:check|build)$/;
-/** Project build output and dependency folders that are always safe to delete and recreate. */
-const REBUILDABLE = /^(\.\/)?(node_modules|dist|build|out|\.next|\.nuxt|\.turbo|\.cache|coverage|target|__pycache__|\.pytest_cache|\.venv|venv|tmp)\/?$/;
-
-function splitSegments(command: string): string[] {
-  return command.split(/&&|\|\||;|\||\n/).map((s) => s.trim()).filter(Boolean);
-}
-
-function words(segment: string): string[] {
-  return segment.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
-}
-
-/** Why a single shell segment is routine, or undefined when it needs a real check. */
-function routineSegment(segment: string): boolean {
-  const w = words(segment);
-  if (!w.length) return true;
-  const [cmd, ...rest] = w;
-  const args = rest.join(" ");
-  if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(cmd!)) return false; // env assignment may hide anything
-  if (SIMPLE_READ_COMMANDS.has(cmd!)) return true;
-  if (cmd === "sed") return !/(^|\s)(-i|--in-place)\b/.test(args);
-  if (cmd === "find") return !/\s?-(delete|exec|execdir|ok|okdir|fprint)\b/.test(` ${args}`);
-  if (cmd === "git") {
-    const sub = rest[0] ?? "";
-    if (sub === "branch") return !/\s-(d|D|m|M|c|C)\b|--delete|--move|--force/.test(` ${args}`);
-    if (sub === "remote") return rest.length === 1 || rest[1] === "-v";
-    if (sub === "stash") return rest[1] === "list";
-    return GIT_READ.has(sub);
-  }
-  if (cmd === "rm") {
-    const targets = rest.filter((a) => !a.startsWith("-"));
-    return targets.length > 0 && targets.every((a) => REBUILDABLE.test(a));
-  }
-  if (cmd === "npm" || cmd === "pnpm" || cmd === "yarn" || cmd === "bun") {
-    if (PKG_SCRIPTS.test(rest[0] ?? "")) return true;
-    // Installing the project's own declared dependencies (no new package names).
-    if (/^(install|i|ci)$/.test(rest[0] ?? "") && rest.slice(1).every((a) => a.startsWith("-"))) return true;
-    if (rest[0] === "run" && PKG_SCRIPTS.test(rest[1] ?? "")) return true;
-    return false;
-  }
-  if (cmd === "npx" || cmd === "pnpx") return /^(tsc|vitest|eslint|prettier|oxlint)$/.test(rest[0] ?? "") && !/--write\b/.test(args);
-  if (cmd === "cargo") return /^(test|build|check|clippy|fmt)$/.test(rest[0] ?? "") && !(rest[0] === "fmt" && !/--check/.test(args));
-  if (cmd === "go") return /^(test|build|vet)$/.test(rest[0] ?? "");
-  if (cmd === "gh") {
-    if (rest[0] === "api") return !/\s(-X|--method|-f|-F|--field|--raw-field|--input)\b/.test(` ${args}`);
-    return /^(pr|issue|run|repo|release|workflow)$/.test(rest[0] ?? "") && /^(view|list|status|checks|diff)$/.test(rest[1] ?? "");
-  }
-  return false;
-}
-
 /** Matched against the resolved path with forward slashes, so it also works for Windows paths. */
 const SENSITIVE_PATH = /(^|\/)(\.ssh|\.gnupg|\.aws|\.kube|\.docker)(\/|$)|authorized_keys|known_hosts|\.(bash|zsh|fish)rc$|\.profile$|\.bash_profile$|(^|\/)\.git\/(hooks|config)(\/|$)|^([a-z]:)?\/etc\/|(^|\/)\.config\/(systemd|autostart)\//i;
 
@@ -160,15 +105,9 @@ export function localVerdict(call: ToolCall): LocalVerdict {
   const input = call.tool_input ?? {};
   switch (call.tool_name) {
     case "Bash": {
-      const command = String(input["command"] ?? "").trim();
-      if (!command) return { decision: "allow", reason: "empty command" };
-      // Substitution, redirection to files, eval, and privilege escalation can hide intent.
-      const stripped = command.replace(/\d?>\s*&\d|\d?>\s*\/dev\/null/g, "");
-      if (/\$\(|`|<\(|>\s*[^&\s]|>>|\beval\b|\bsudo\b|\bsu\b|\bdoas\b/.test(stripped)) {
-        return { decision: "evaluate", reason: "command uses substitution, redirection, or privilege escalation" };
-      }
-      const segments = splitSegments(stripped);
-      return segments.every(routineSegment)
+      const command = String(input["command"] ?? "");
+      if (/^[ \t\n]*$/.test(command)) return { decision: "allow", reason: "empty command" };
+      return isRoutineShellCommand(command)
         ? { decision: "allow", reason: "routine read-only or project command" }
         : { decision: "evaluate", reason: "command is not on the routine list" };
     }
