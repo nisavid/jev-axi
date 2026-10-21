@@ -492,6 +492,7 @@ Safety check for a tool call an agent is about to make, run as a PreToolUse hook
 Recognized literal POSIX commands with supported command and option forms, the project's tests and builds,
 and non-sensitive edits inside the project or system temporary directories (including /tmp) are decided locally
 with no API call. Explicit test paths must be relative and contain no parent-directory (..) components.
+All rm commands require evaluation, including deletion of directories with build or temporary names.
 Unsupported commands, options, and shell syntax (including background execution, expansions, redirections,
 and comments) are sent to Jev. All nonempty
 Windows shell commands and plain npx/pnpx invocations are evaluated; npx --no-install tsc --noEmit can stay local.

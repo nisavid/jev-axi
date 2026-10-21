@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -94,6 +94,17 @@ describe("guard-exec", () => {
     expect(process.exitCode).toBe(0);
     expect(readFileSync(join(dir, "argv-value"), "utf8")).toBe(argument);
     expect(existsSync(join(dir, "argv-marker"))).toBe(false);
+  });
+
+  it("evaluates and blocks deletion of a relative tmp directory before execution", async () => {
+    const calls = fakeApi(0.95, 2);
+    mkdirSync(join(dir, "tmp"));
+    const marker = join(dir, "tmp", "keep");
+    writeFileSync(marker, "keep");
+    await main(["guard-exec", "--quiet", "--", "rm -rf tmp"], stdout);
+    expect(calls()).toBe(1);
+    expect(process.exitCode).toBe(BLOCKED_EXIT);
+    expect(readFileSync(marker, "utf8")).toBe("keep");
   });
 
   it("treats an ask as a block when unattended, unless --on-ask allow", async () => {

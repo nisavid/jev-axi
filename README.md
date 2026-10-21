@@ -246,7 +246,7 @@ jev-axi setup safety --remove             # uninstall
 Installs a `PreToolUse` hook that checks each `Bash` command and file-edit call before it runs:
 
 - **Recognized routine calls stay local:** supported literal POSIX read commands, project
-  test/build invocations, declared-dependency installs, build-folder deletion, and non-sensitive
+  test/build invocations, declared-dependency installs, and non-sensitive
   edits inside the project or system temporary directories (including `/tmp`) are decided
   locally. Sensitive edits and other edits outside the project go to Jev.
   The shell fast path checks complete command and
@@ -258,7 +258,8 @@ Installs a `PreToolUse` hook that checks each `Bash` command and file-edit call 
   declared tests/builds and dependency installs intentionally run that code. Explicit test-file
   arguments must be relative and contain no `..` path components. Plain
   `npx`/`pnpx` invocations are evaluated because they can download code; the explicit
-  `npx --no-install tsc --noEmit` form can stay local.
+  `npx --no-install tsc --noEmit` form can stay local. All `rm` commands require evaluation,
+  including deletion of directories with build or temporary names.
 - **Everything else is sent to Jev** with credentials redacted (API keys, tokens, passwords,
   connection strings, private keys), together with the contents of any local script the
   command runs, so a harmless-looking `./scripts/cleanup.sh` is judged by what it does.

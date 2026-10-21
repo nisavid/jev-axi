@@ -75,7 +75,6 @@ function readArgs(args: string[], flags: RegExp, values: readonly string[] = [])
 const NO_FLAGS = /$^/;
 const SEARCH_FLAGS = /^-[EFGFinHhRrsvwxcoulqa]+$/;
 const PROJECT_SCRIPT = /^(test|lint|typecheck|check|format:check|build)$/;
-const REBUILDABLE = /^(\.\/)?(node_modules|dist|build|out|\.next|\.nuxt|\.turbo|\.cache|coverage|target|__pycache__|\.pytest_cache|\.venv|venv|tmp)\/?$/;
 
 /** Validate supported Git subcommands and arguments, assuming trusted local Git configuration. */
 function routineGit(args: string[]): boolean {
@@ -136,10 +135,6 @@ function routineCommand(argv: string[]): boolean {
     case "dirname": case "realpath": return readArgs(args, NO_FLAGS) !== undefined;
     case "diff": return readArgs(args, /^-[uqrNwbiBE]+$/)?.length === 2;
     case "git": return routineGit(args);
-    case "rm": {
-      const targets = readArgs(args, /^-[rf]+$|^--(recursive|force)$/);
-      return targets !== undefined && targets.length > 0 && targets.every((a) => REBUILDABLE.test(a));
-    }
     case "npm": case "pnpm": case "yarn": case "bun": {
       const scriptArgs = args[0] === "run" ? args.slice(1) : args;
       if (PROJECT_SCRIPT.test(scriptArgs[0] ?? "")) {

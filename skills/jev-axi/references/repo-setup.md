@@ -87,6 +87,7 @@ jev-axi setup safety --remove --project     # uninstall
   All nonempty Windows shell commands and plain `npx`/`pnpx` invocations are evaluated;
   `npx --no-install tsc --noEmit` can stay local. Local decisions assume trusted executables,
   Git configuration, and project code.
+  All `rm` commands require evaluation, including deletion of directories with build or temporary names.
 - Blocks strong destructive, exfiltration, remote-code, or security-weakening signals; asks the
   user on moderate ones; otherwise stays silent. It never auto-approves.
 - **What leaves the machine:** the command (credentials redacted) and the contents of local
