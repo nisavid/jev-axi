@@ -42,12 +42,19 @@ Start from the selected clean commit, install with `pnpm install
 --frozen-lockfile`, and run:
 
 ```sh
-pnpm test
-pnpm lint
-pnpm check:skill
-pnpm build
+pnpm verify
 git diff --check
 ```
+
+`pnpm verify` is also the CI command. It runs type-checking (`lint`), tests,
+generated skill validation, build, and a built CLI version smoke test. Tests use
+a fake API; verification requires no API key or external services and runs
+offline after dependencies are installed. Follow the [test prerequisites](../CONTRIBUTING.md#test-prerequisites),
+including loopback listening for the mock API; skipped or blocked checks do not
+qualify a candidate. CI covers Node.js 22 and 24 with pnpm 10 on Linux, Windows,
+and macOS. Live model evaluations (`pnpm eval`) require an
+API key and network access, may incur API charges, and run separately; see the
+[evaluation guide](../bench/README.md).
 
 Edit canonical help text before `pnpm build:skill`. Keep `dist/`, dependencies,
 fixture state, transcripts, and generated candidate archives out of Git.
