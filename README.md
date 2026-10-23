@@ -493,11 +493,27 @@ latency, project name, confidence bands), and the safety audit log.
 ## Development
 
 ```sh
-pnpm install
-pnpm dev -- check "Is this urgent?" --text "ASAP"
-pnpm test
-pnpm build
+pnpm install --frozen-lockfile
+pnpm verify
 ```
+
+`pnpm verify` runs type-checking (`lint`), tests, generated skill validation,
+the build, and a built CLI version smoke test, in the same order as CI. Tests
+use a fake API; verification requires no API key or external services and runs
+offline after dependencies are installed. See the [test prerequisites](CONTRIBUTING.md#test-prerequisites)
+for the required loopback listening capability. CI uses pnpm 10 with Node.js 22
+and 24 on Linux, Windows, and macOS.
+
+Live commands and model evaluations are separate checks that require an API key
+and network access and may incur API charges:
+
+```sh
+export TYPESAFE_API_KEY=...
+pnpm dev -- check "Is this urgent?" --text "ASAP"
+pnpm eval --only safety --fresh
+```
+
+See [the evaluation guide](bench/README.md) for case selection and comparisons.
 
 Files: `~/.config/jev-axi/config.json`, `~/.config/jev-axi/stats/usage.jsonl`,
 `~/.config/jev-axi/recipes/`, `~/.cache/jev-axi/`. XDG variables and Windows
