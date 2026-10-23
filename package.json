@@ -43,6 +43,7 @@
     "build:skill": "node --import tsx scripts/build-skill.ts",
     "check:skill": "node --import tsx scripts/build-skill.ts --check",
     "lint": "tsc --noEmit",
+    "verify": "pnpm lint && pnpm test && pnpm check:skill && pnpm build && node dist/bin/jev-axi.js --version",
     "prepublishOnly": "npm run build",
     "eval": "node --import tsx bench/eval.ts"
   },

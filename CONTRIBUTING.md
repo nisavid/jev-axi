@@ -6,13 +6,35 @@ contributions are one of three kinds.
 ## Setup
 
 ```sh
-pnpm install
-export TYPESAFE_API_KEY=...     # only needed for live runs; tests use a fake API
-pnpm dev -- check "Is this urgent?" --text "ASAP"
-pnpm test
-pnpm lint
-pnpm build
+pnpm install --frozen-lockfile
+pnpm verify
 ```
+
+`pnpm verify` is the local and CI verification command: type-checking (`lint`),
+tests, generated skill validation, build, then a built CLI version smoke test.
+CI uses pnpm 10 with Node.js 22 and 24 on Linux, Windows, and macOS.
+
+### Test prerequisites
+
+Tests use fake APIs, so verification runs offline after dependencies are
+installed and needs no API key or external services. The action integration
+tests in `test/action.test.ts` start a mock GitHub HTTP API on `127.0.0.1`, so
+the runner must permit loopback listening. If the host denies local listeners,
+use a runner that permits that capability. Skipped or blocked checks do not
+count as passing verification.
+
+### Live checks
+
+Run live checks deliberately; they require an API key and network access and may
+incur API charges:
+
+```sh
+export TYPESAFE_API_KEY=...
+pnpm dev -- check "Is this urgent?" --text "ASAP"
+pnpm eval
+```
+
+See [the evaluation guide](bench/README.md) for case selection and comparisons.
 
 ## Improving questions
 
@@ -42,7 +64,8 @@ with the fake API in `test/`.
 ## Pull requests
 
 - Keep each PR to one change.
-- `pnpm test`, `pnpm lint`, and `pnpm check:skill` must pass; CI runs them.
+- Install dependencies with `pnpm install --frozen-lockfile`, then run `pnpm verify`;
+  CI runs the same command.
 - Never commit an API key. `.env` is gitignored; keep it that way.
 
 ## Fork candidates
