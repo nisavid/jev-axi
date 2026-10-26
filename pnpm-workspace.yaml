@@ -1,4 +1,8 @@
 allowBuilds:
   esbuild: true
+# Match pnpm's Windows default so esbuild's dependency paths are reproducible.
+virtualStoreDirMaxLength: 60
 minimumReleaseAgeExclude:
   - axi-sdk-js@0.1.12
+patchedDependencies:
+  axi-sdk-js@0.1.12: patches/axi-sdk-js@0.1.12.patch

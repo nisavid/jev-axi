@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  axi-sdk-js@0.1.12:
+    hash: b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838
+    path: patches/axi-sdk-js@0.1.12.patch
+
 importers:
 
   .:
@@ -16,7 +21,7 @@ importers:
         version: 0.6.0
       axi-sdk-js:
         specifier: ^0.1.12
-        version: 0.1.12
+        version: 0.1.12(patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838)
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
@@ -24,6 +29,9 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.3
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       tsx:
         specifier: ^4.0.0
         version: 4.23.13
@@ -960,7 +968,7 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  axi-sdk-js@0.1.12:
+  axi-sdk-js@0.1.12(patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838):
     dependencies:
       '@toon-format/toon': 2.3.1
 
