@@ -412,6 +412,14 @@ to a file and add a step with `if: failure()`, `mode: triage`, and `log-file: te
 quietly there. `workflow_run` runs in your repository with secrets, which is why the triage
 example uses it. Avoid `pull_request_target` for review.
 
+The action selects Node 24 and installs the requested public npm version in a temporary
+runtime, with install scripts disabled and no credentials in the installer environment.
+It then runs that CLI directly with the TypeSafe key; the GitHub token stays in the
+action process. Job-level executable overrides, npm configuration, and user CLI settings
+are not inherited. Set `version` and `model` through action inputs. The runtime is removed
+when the action finishes. Use a separate privileged job when processing untrusted code;
+earlier code in the same job can modify shared files and runner state.
+
 Inputs: `api-key`, `mode` (review, triage), `comment` (default true), `fail-on` (block,
 review, never), `max-files` (default 100), `pr-number`, `log-file`, `run-id`, `version`,
 `model`. Outputs: `verdict`, `flagged`, `root-cause`, `comment-url`. See

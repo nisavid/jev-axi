@@ -1,8 +1,8 @@
 // Entry point for the jev-axi GitHub Action. Dependency-free: Node built-ins and fetch only.
-import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { countDiffFiles, renderReview, renderTriage, REVIEW_MARKER, TRIAGE_MARKER, trimJobLog } from "./lib.mjs";
+import { createRuntime } from "./runtime.mjs";
 
 const env = process.env;
 const input = (name, fallback = "") => (env[`JEV_INPUT_${name.toUpperCase().replace(/-/g, "_")}`] ?? "").trim() || fallback;
@@ -40,30 +40,12 @@ async function github(path, { method = "GET", body, accept = "application/vnd.gi
   return (res.headers.get("content-type") ?? "").includes("json") ? res.json() : res.text();
 }
 
-/** Run jev-axi with --json. JEV_AXI_BIN (a JSON array of argv) overrides the npx invocation, for testing. */
+let runtime;
+/** Both modes use the same isolated CLI runtime; no environment executable override. */
 function jevAxi(args, stdin) {
   const version = input("version") || JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
-  const [cmd, ...pre] = env.JEV_AXI_BIN ? JSON.parse(env.JEV_AXI_BIN) : ["npx", "-y", `jev-axi@${version}`];
-  const model = input("model");
-  const r = spawnSync(cmd, [...pre, ...args, "--json", ...(model ? ["--model", model] : [])], {
-    input: stdin,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-    // npx is a .cmd script on Windows, which needs a shell.
-    shell: process.platform === "win32" && !env.JEV_AXI_BIN,
-    env: { ...env, TYPESAFE_API_KEY: input("api-key") },
-  });
-  const out = (r.stdout ?? "").trim();
-  if (r.status === 0) {
-    // The JSON document starts at the first line that opens an object; tolerate stray output before it.
-    const start = out.startsWith("{") ? 0 : out.indexOf("\n{") + 1;
-    try {
-      if (start >= 0) return JSON.parse(out.slice(start));
-    } catch {
-      // fall through
-    }
-  }
-  throw new Error((out || r.stderr || r.error?.message || `exit ${r.status}`).split("\n").slice(0, 3).join(" "));
+  runtime ??= createRuntime(version);
+  return runtime.run(args, stdin, input("api-key"), input("model"));
 }
 
 /** Create or update this action's comment on a pull request. */
@@ -162,4 +144,6 @@ try {
 } catch (error) {
   console.log(`::error title=jev-axi::${error.message}`);
   process.exitCode = 1;
+} finally {
+  runtime?.cleanup();
 }

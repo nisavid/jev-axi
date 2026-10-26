@@ -54,20 +54,28 @@ outputs:
 runs:
   using: composite
   steps:
-    - id: node
-      shell: bash
-      run: |
-        major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
-        if [ "$major" -ge 22 ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
-    # jev-axi needs Node 22+; only touch the job's Node when the runner's is older.
-    - if: steps.node.outputs.ok != 'true'
-      uses: actions/setup-node@v7
+    # Select a Node distribution with bundled npm, ahead of inherited PATH entries.
+    - uses: actions/setup-node@v7
       with:
-        node-version: 22
+        node-version: 24
+        package-manager-cache: false
     - id: run
-      shell: bash
+      # Privileged mode ignores inherited Bash functions and startup hooks.
+      shell: bash --noprofile --norc -p -e -o pipefail {0}
       run: node "$GITHUB_ACTION_PATH/action/run.mjs"
       env:
+        NODE_OPTIONS: ""
+        NODE_PATH: ""
+        BASH_ENV: ""
+        ENV: ""
+        LD_PRELOAD: ""
+        LD_AUDIT: ""
+        LD_LIBRARY_PATH: ""
+        DYLD_INSERT_LIBRARIES: ""
+        DYLD_LIBRARY_PATH: ""
+        DYLD_FALLBACK_LIBRARY_PATH: ""
+        DYLD_FRAMEWORK_PATH: ""
+        DYLD_FALLBACK_FRAMEWORK_PATH: ""
         JEV_INPUT_API_KEY: ${{ inputs.api-key }}
         JEV_INPUT_MODE: ${{ inputs.mode }}
         JEV_INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
