@@ -372,7 +372,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: nisavid/jev-axi@b019a942a490e1d03f517a9166127fe592015d6b
+      - uses: nisavid/jev-axi@fe4cb3cdb9239f26a98d8c57175ed38c8e5c0858
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
@@ -398,7 +398,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     steps:
-      - uses: nisavid/jev-axi@b019a942a490e1d03f517a9166127fe592015d6b
+      - uses: nisavid/jev-axi@fe4cb3cdb9239f26a98d8c57175ed38c8e5c0858
         with:
           mode: triage
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
