@@ -499,11 +499,13 @@ Windows shell commands and plain npx/pnpx invocations are evaluated; npx --no-in
 Local decisions assume trusted executables, Git configuration, and project code. Other calls are sent to Jev
 with secrets redacted and scored for destructive actions, exfiltration, running downloaded code, weakening
 security, and changes outside the project.
+Commands are limited to 16 KiB of UTF-8 before local checks or redaction; the complete safety state is limited
+to 24 KiB of serialized JSON before and after redaction. Oversized input is rejected, never truncated to decide the original command.
 output: nothing (normal permission flow applies; never auto-approves), or a PreToolUse decision JSON to ask or deny.
 flags:
   --agent <name>       output format: claude (default) or codex (Codex supports only deny, so ask becomes deny)
   --input <json|path>  hook JSON instead of stdin, for testing
-  --on-error <mode>    auto (default: deny API 403, allow other errors), allow, ask, or deny
+  --on-error <mode>    auto (default: deny invalid/oversized input and API 403, allow unavailable checks), allow, ask, or deny
   --explain            print the decision, scores, and reason as TOON instead of hook JSON
 install: jev-axi setup safety [--project] [--agent claude|codex]
 supervision hooks for Claude Code and Codex (install: jev-axi setup supervise [--project] [--agent claude|codex] [--block]):
@@ -542,13 +544,15 @@ Safety-check a shell command, then run it. The same check as the agent safety ho
 and scripts: routine commands are decided locally; others are sent to Jev with secrets redacted, together with the
 contents of local scripts they run, and scored for destructive actions, exfiltration, running downloaded code,
 weakening security, and changes outside the current directory.
+Commands are limited to 16 KiB of UTF-8 before local checks or redaction; the complete safety state is limited
+to 24 KiB of serialized JSON before and after redaction. Oversized input is rejected, never truncated to decide the original command.
 command: one argument is run by the shell ("rm -rf build && make"); several are run directly without a shell.
 exit code: the command's own exit status when it runs; 126 when it is blocked; 2 for usage errors.
 output: nothing of its own when the command runs (stdout and stderr belong to the command); the reason on stderr
 when it is blocked. Decisions that reach Jev are logged to ~/.config/jev-axi/stats/safety.jsonl.
 flags:
   --on-ask <mode>      when the check wants approval: prompt (default; on a terminal, otherwise deny), deny, allow
-  --on-error <mode>    auto (default: deny API 403, allow other errors), allow, or deny
+  --on-error <mode>    auto (default: deny invalid/oversized input and API 403, allow unavailable checks), allow, or deny
   --dry-run            print the decision and scores without running the command; exit 0 if it would run, 126 if not
   --quiet              no stderr note when a command is blocked
 examples:

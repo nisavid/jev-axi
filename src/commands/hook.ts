@@ -6,7 +6,7 @@ import { evaluate, type NoulAnswer, type ScoreAnswer } from "../client.js";
 import { ensureDir, paths } from "../config.js";
 import { AxiError, validation } from "../errors.js";
 import { SAFETY_QUESTIONS } from "../recipes/questions.js";
-import { buildSafetyState, decide, hookOutput, localVerdict, reasonText, redactSecrets, type Decision, type ToolCall } from "../safety.js";
+import { buildSafetyState, decide, hookOutput, localVerdict, reasonText, redactSecrets, validateSafetyCommand, type Decision, type ToolCall } from "../safety.js";
 import { GIT_HOOKS_HELP, commitMsgHook, preCommitHook, prePushHook } from "./githooks.js";
 import { isStdinTTY, readStdinSync } from "../stdin.js";
 import { assess, readSession, readTranscript, recordEvent, workDiff, type Assessment } from "../supervise.js";
@@ -27,11 +27,13 @@ Windows shell commands and plain npx/pnpx invocations are evaluated; npx --no-in
 Local decisions assume trusted executables, Git configuration, and project code. Other calls are sent to Jev
 with secrets redacted and scored for destructive actions, exfiltration, running downloaded code, weakening
 security, and changes outside the project.
+Commands are limited to 16 KiB of UTF-8 before local checks or redaction; the complete safety state is limited
+to 24 KiB of serialized JSON before and after redaction. Oversized input is rejected, never truncated to decide the original command.
 output: nothing (normal permission flow applies; never auto-approves), or a PreToolUse decision JSON to ask or deny.
 flags:
   --agent <name>       output format: claude (default) or codex (Codex supports only deny, so ask becomes deny)
   --input <json|path>  hook JSON instead of stdin, for testing
-  --on-error <mode>    auto (default: deny API 403, allow other errors), allow, ask, or deny
+  --on-error <mode>    auto (default: deny invalid/oversized input and API 403, allow unavailable checks), allow, ask, or deny
   --explain            print the decision, scores, and reason as TOON instead of hook JSON
 install: jev-axi setup safety [--project] [--agent claude|codex]
 supervision hooks for Claude Code and Codex (install: jev-axi setup supervise [--project] [--agent claude|codex] [--block]):
@@ -104,7 +106,7 @@ export async function hookCommand(args: string[]): Promise<Renderable> {
 
 export interface Judgment {
   decision: Decision;
-  /** local: decided without an API call; jev: scored by Jev; error: Jev unavailable, on-error policy applied. */
+  /** local: decided without an API call; jev: scored by Jev; error: validation/API failure, on-error policy applied. */
   source: "local" | "jev" | "error";
   reason: string;
   detail: Record<string, unknown>;
@@ -117,12 +119,15 @@ export async function judgeToolCall(
   call: ToolCall,
   opts: { agent: string; onError: ErrorPolicy; timeoutMs: number },
 ): Promise<Judgment> {
-  const local = localVerdict(call);
-  if (local.decision === "allow") return { decision: "allow", source: "local", reason: local.reason, detail: {} };
-  const summary = redactSecrets(String(call.tool_input["command"] ?? call.tool_input["file_path"] ?? "")).slice(0, 200);
+  let summary = "[input omitted: safety validation failed]";
   let j: Judgment;
   try {
-    const r = await evaluate(buildSafetyState(call), SAFETY_QUESTIONS, { command: opts.agent === "exec" ? "guard-exec" : "hook", timeoutMs: opts.timeoutMs, maxRetries: 0 });
+    if (call.tool_name === "Bash") validateSafetyCommand(call.tool_input?.["command"] ?? "");
+    const local = localVerdict(call);
+    if (local.decision === "allow") return { decision: "allow", source: "local", reason: local.reason, detail: {} };
+    const state = buildSafetyState(call);
+    summary = redactSecrets(String(call.tool_input["command"] ?? call.tool_input["file_path"] ?? "")).slice(0, 200);
+    const r = await evaluate(state, SAFETY_QUESTIONS, { command: opts.agent === "exec" ? "guard-exec" : "hook", timeoutMs: opts.timeoutMs, maxRetries: 0 });
     const hazards = Object.fromEntries(
       Object.entries(r.answers).filter(([, a]) => a.type === "noul").map(([k, a]) => [k, Math.round((a as NoulAnswer).noul * 100) / 100]),
     );
@@ -133,9 +138,12 @@ export async function judgeToolCall(
   } catch (error) {
     const message = (error as Error).message;
     const rejected = error instanceof AxiError && error.code === "API_REJECTED";
-    const decision = opts.onError === "auto" ? (rejected ? "deny" : "allow") : opts.onError;
+    const invalid = error instanceof AxiError && error.code === "VALIDATION_ERROR";
+    const decision = opts.onError === "auto" ? (rejected || invalid ? "deny" : "allow") : opts.onError;
     const reason = rejected
       ? `jev-axi safety check rejected by the API (403); on-error policy: ${opts.onError}, decision: ${decision}.`
+      : invalid
+      ? `jev-axi safety input invalid (${message}); on-error policy: ${opts.onError}, decision: ${decision}.`
       : `jev-axi safety check unavailable (${message}); on-error policy: ${opts.onError}, decision: ${decision}.`;
     j = { decision, source: "error", reason, detail: { error: message } };
   }

@@ -14,6 +14,7 @@ import { homedir, tmpdir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { EntryType } from "@typesafe-ai/sdk";
 import { isRoutineShellCommand } from "./routine-shell.js";
+import { validation } from "./errors.js";
 
 export type Decision = "allow" | "ask" | "deny";
 
@@ -135,6 +136,24 @@ export function localVerdict(call: ToolCall): LocalVerdict {
 const SCRIPT_RUN = /(?:^|\s|&&|;)(?:(?:bash|sh|zsh|python3?|node|ruby|perl|deno run|bun run|tsx)\s+)?((?:\.{1,2}\/|\/)?[\w./-]+\.(?:sh|bash|py|js|mjs|cjs|ts|rb|pl))\b|(?:^|\s|&&|;)(\.\/[\w./-]+)/g;
 const MAX_SCRIPT_CHARS = 4000;
 const MAX_CONTENT_CHARS = 3000;
+// Leave room for the safety questions within the model's ~32k-token limit.
+export const MAX_SAFETY_COMMAND_BYTES = 16 * 1024;
+export const MAX_SAFETY_STATE_BYTES = 24 * 1024;
+
+/** Reject before parsing or redacting; never judge a truncated command and run the original. */
+export function validateSafetyCommand(command: unknown): asserts command is string {
+  if (typeof command !== "string") throw validation("Safety command must be a string");
+  if (Buffer.byteLength(command, "utf8") > MAX_SAFETY_COMMAND_BYTES) {
+    throw validation(`Safety command exceeds the ${MAX_SAFETY_COMMAND_BYTES}-byte input limit`);
+  }
+}
+
+function validateSafetyState(state: Record<string, EntryType>): void {
+  // Include script aggregation, metadata, keys, Unicode, and JSON escaping in the budget.
+  if (Buffer.byteLength(JSON.stringify(state), "utf8") > MAX_SAFETY_STATE_BYTES) {
+    throw validation(`Safety state exceeds the ${MAX_SAFETY_STATE_BYTES}-byte input limit`);
+  }
+}
 
 /** What Jev sees: the call with secrets redacted, plus the contents of any local script it runs. */
 export function buildSafetyState(call: ToolCall): EntryType {
@@ -142,28 +161,37 @@ export function buildSafetyState(call: ToolCall): EntryType {
   const input = call.tool_input ?? {};
   const state: Record<string, EntryType> = { tool: call.tool_name, cwd };
   if (call.tool_name === "Bash") {
-    const command = String(input["command"] ?? "");
-    state["command"] = redactSecrets(command);
+    const command = input["command"] ?? "";
+    validateSafetyCommand(command);
+    state["command"] = command;
+    validateSafetyState(state);
     const scripts: Record<string, string> = {};
     for (const m of command.matchAll(SCRIPT_RUN)) {
       const path = m[1] ?? m[2];
-      if (!path) continue;
+      if (!path || Object.hasOwn(scripts, path)) continue;
       const abs = resolve(cwd, path);
+      let text: string | undefined;
       try {
         if (insideDir(abs, cwd) && existsSync(abs) && statSync(abs).isFile() && statSync(abs).size < 512_000) {
-          const text = readFileSync(abs, "utf8");
-          scripts[path] = redactSecrets(text.length > MAX_SCRIPT_CHARS ? `${text.slice(0, MAX_SCRIPT_CHARS)}\n... (truncated)` : text);
+          text = readFileSync(abs, "utf8");
         }
       } catch {
         // unreadable: judge the command alone
       }
+      if (text === undefined) continue;
+      scripts[path] = text.length > MAX_SCRIPT_CHARS ? `${text.slice(0, MAX_SCRIPT_CHARS)}\n... (truncated)` : text;
+      state["local_scripts_run"] = scripts;
+      // Bound the work before redaction; do not swallow validation as an unreadable script.
+      validateSafetyState(state);
     }
-    if (Object.keys(scripts).length) state["local_scripts_run"] = scripts;
+    state["command"] = redactSecrets(command);
+    for (const path of Object.keys(scripts)) scripts[path] = redactSecrets(scripts[path]!);
   } else {
     state["file_path"] = String(input["file_path"] ?? input["notebook_path"] ?? "");
     const content = String(input["content"] ?? input["new_string"] ?? "");
     if (content) state["content_excerpt"] = redactSecrets(content.slice(0, MAX_CONTENT_CHARS));
   }
+  validateSafetyState(state);
   return state;
 }
 
