@@ -372,7 +372,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: shiftynick/jev-axi@v0
+      - uses: nisavid/jev-axi@8bd09374c92849a04472b55afea4f35919fab9ef
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
@@ -398,7 +398,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     steps:
-      - uses: shiftynick/jev-axi@v0
+      - uses: nisavid/jev-axi@8bd09374c92849a04472b55afea4f35919fab9ef
         with:
           mode: triage
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
@@ -415,7 +415,8 @@ example uses it. Avoid `pull_request_target` for review.
 Inputs: `api-key`, `mode` (review, triage), `comment` (default true), `fail-on` (block,
 review, never), `max-files` (default 100), `pr-number`, `log-file`, `run-id`, `version`,
 `model`. Outputs: `verdict`, `flagged`, `root-cause`, `comment-url`. See
-[action.yml](action.yml). Pin `@v0` for the latest 0.x, or an exact version such as `@v0.4.0`.
+[action.yml](action.yml). Both examples pin the same reviewed fork revision;
+update that commit deliberately when adopting a newer Action runtime.
 
 The fork's Action executes the CLI and dependencies bundled at its selected
 revision, with no runtime package installation. Pin an immutable commit of
