@@ -1,10 +1,11 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { configureFetch } from "../src/client.js";
 import { configureSafetyHook, hookCommand } from "../src/commands/hook.js";
-import { buildSafetyState, decide, hookOutput, localVerdict, redactSecrets } from "../src/safety.js";
+import { buildSafetyState, decide, hookOutput, localVerdict, MAX_SAFETY_COMMAND_BYTES, MAX_SAFETY_STATE_BYTES, redactSecrets } from "../src/safety.js";
 
 const bash = (command: string, cwd = "/work/proj") => ({ tool_name: "Bash", tool_input: { command }, cwd });
 
@@ -164,7 +165,96 @@ describe("decisions", () => {
   });
 });
 
+describe("safety input limits", () => {
+  it("measures the original command in UTF-8 bytes without truncating or relying on redaction", () => {
+    const prefix = "env ";
+    const command = prefix + " ".repeat(MAX_SAFETY_COMMAND_BYTES - prefix.length);
+    expect((buildSafetyState(bash(command)) as any).command).toBe(command);
+    expect(() => buildSafetyState(bash(command + " "))).toThrow("command exceeds");
+    const unicode = prefix + "☃".repeat((MAX_SAFETY_COMMAND_BYTES - prefix.length) / 3);
+    expect((buildSafetyState(bash(unicode)) as any).command).toBe(unicode);
+    expect(() => buildSafetyState(bash(unicode + "☃"))).toThrow("command exceeds");
+    expect(() => buildSafetyState(bash("API_KEY=" + "a".repeat(MAX_SAFETY_COMMAND_BYTES)))).toThrow("command exceeds");
+    expect(() => buildSafetyState({ tool_name: "Bash", tool_input: { command: ["true"] } })).toThrow("must be a string");
+    for (const command of [null, undefined]) {
+      expect(() => buildSafetyState({ tool_name: "Bash", tool_input: { command } })).toThrow("must be a string");
+    }
+    expect((buildSafetyState(bash("")) as any).command).toBe("");
+  });
+
+  it("counts metadata and JSON escaping in the complete serialized state", () => {
+    const command = "env";
+    const overhead = Buffer.byteLength(JSON.stringify(buildSafetyState(bash(command, ""))));
+    const cwd = " ".repeat(MAX_SAFETY_STATE_BYTES - overhead);
+    expect(Buffer.byteLength(JSON.stringify(buildSafetyState(bash(command, cwd))))).toBe(MAX_SAFETY_STATE_BYTES);
+    expect(() => buildSafetyState(bash(command, cwd + " "))).toThrow("state exceeds");
+    expect(() => buildSafetyState(bash(command, '"'.repeat(MAX_SAFETY_STATE_BYTES / 2)))).toThrow("state exceeds");
+  });
+
+  it.each(["padding", "repeated script"])("bounds %s before synchronous work can exhaust the hook timeout", (kind) => {
+    const dir = mkdtempSync(join(tmpdir(), "safety-long-input-"));
+    const input = join(dir, "input.json");
+    writeFileSync(join(dir, "a.sh"), "#" + "x".repeat(3998) + "\n");
+    const command = kind === "padding" ? "env #" + "x".repeat(100_000) : "./a.sh; ".repeat(1800);
+    writeFileSync(input, JSON.stringify(bash(command, dir)));
+    const result = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"),
+      join(import.meta.dirname, "../bin/jev-axi.ts"), "hook", "pre-tool-use", "--input", input, "--on-error", "deny", "--explain", "--json"], {
+      encoding: "utf8", timeout: 5000,
+      env: { ...process.env, TYPESAFE_API_KEY: "", XDG_CONFIG_HOME: dir },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(0);
+    const judgment = JSON.parse(result.stdout);
+    expect(judgment).toMatchObject({ decision: "deny", source: "error" });
+    expect(judgment.reason).toContain(kind === "padding" ? "input invalid" : "check unavailable");
+    const log = readFileSync(join(dir, "jev-axi", "stats", "safety.jsonl"), "utf8");
+    if (kind === "padding") expect(log).toContain("input omitted");
+    expect(log).not.toContain("xxxxx");
+  });
+});
+
 describe("API rejection policy", () => {
+  it("denies invalid and oversized input under auto while preserving explicit overrides", async () => {
+    const saved = Object.fromEntries(["TYPESAFE_API_KEY", "JEV_AXI_NO_CACHE", "XDG_CONFIG_HOME"].map((key) => [key, process.env[key]]));
+    process.env["TYPESAFE_API_KEY"] = "test-key";
+    process.env["JEV_AXI_NO_CACHE"] = "1";
+    const dir = mkdtempSync(join(tmpdir(), "safety-limits-"));
+    process.env["XDG_CONFIG_HOME"] = dir;
+    let requests = 0;
+    const run = async (call: unknown, mode?: string) => JSON.parse(String(await hookCommand([
+      "pre-tool-use", "--input", JSON.stringify(call), "--explain", "--json", ...(mode ? ["--on-error", mode] : []),
+    ])));
+    try {
+      configureFetch((async () => { requests++; throw new Error("unexpected request"); }) as any);
+      for (const command of ["env " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), "echo " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), ["true"], 42, null, undefined]) {
+        expect(await run({ tool_name: "Bash", tool_input: { command } })).toMatchObject({ decision: "deny", source: "error" });
+      }
+      const scripts = Array.from({ length: 7 }, (_, i) => `./script-${i}.sh`);
+      for (const script of scripts) writeFileSync(join(dir, script), "echo ok\n".repeat(500));
+      const aggregate = bash(scripts.join("; "), dir);
+      expect(await run(aggregate)).toMatchObject({ decision: "deny", source: "error" });
+      for (const mode of ["auto", "allow", "ask", "deny"]) {
+        expect(await run(bash("env " + " ".repeat(MAX_SAFETY_COMMAND_BYTES)), mode)).toMatchObject({
+          decision: mode === "auto" ? "deny" : mode, source: "error",
+        });
+      }
+      expect(requests).toBe(0);
+
+      for (const [status, detail] of [[400, "max_tokens_exceeded"], [400, "invalid state"], [413, "payload too large"], [422, "invalid request"]] as const) {
+        configureFetch((async () => new Response(JSON.stringify({ detail }), { status, headers: { "content-type": "application/json" } })) as any);
+        for (const mode of [undefined, "auto", "allow", "ask", "deny"]) {
+          expect(await run(bash("env"), mode)).toMatchObject({ decision: !mode || mode === "auto" ? "deny" : mode, source: "error" });
+        }
+      }
+    } finally {
+      configureFetch(undefined);
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   it("denies a JSON 403 by default, treats a firewall HTML 403 as unavailability, and keeps explicit policy behavior", async () => {
     const saved = Object.fromEntries(["TYPESAFE_API_KEY", "JEV_AXI_NO_CACHE", "XDG_CONFIG_HOME"].map((key) => [key, process.env[key]]));
     process.env["TYPESAFE_API_KEY"] = "test-key";

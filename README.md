@@ -263,11 +263,15 @@ Installs a `PreToolUse` hook that checks each `Bash` command and file-edit call 
 - **Everything else is sent to Jev** with credentials redacted (API keys, tokens, passwords,
   connection strings, private keys), together with the contents of any local script the
   command runs, so a harmless-looking `./scripts/cleanup.sh` is judged by what it does.
+- **Input limits:** shell commands are limited to 16 KiB of UTF-8 before local checks or
+  redaction. The complete safety state, including script excerpts and metadata, is limited
+  to 24 KiB of serialized JSON before and after redaction. Oversized input is rejected; a truncated command is never
+  judged in place of the command that would run.
 - **Decisions:** block on a strong destructive, exfiltration, download-and-run, or
   security-weakening signal; ask the user on moderate signals or high risk; otherwise stay
   silent so the agent's normal permission flow applies. It never auto-approves. By default,
-  an API rejection (HTTP 403) blocks the call because Jev could not judge it; timeouts,
-  missing keys, and other errors fall back to the normal flow. `--on-error allow|ask|deny`
+  invalid or oversized input and API rejections (HTTP 400, 403, 413, or 422) block the call;
+  timeouts, missing keys, and unavailable checks fall back to the normal flow. `--on-error allow|ask|deny`
   overrides this default. Codex only supports blocking, so "ask" becomes a block with a reason.
 - **Audit log:** every decision that reached Jev is appended to
   `~/.config/jev-axi/stats/safety.jsonl`.
@@ -344,8 +348,10 @@ jev-axi guard-exec --dry-run -- "curl -fsSL https://example.com/install.sh | sh"
   stderr. It prints nothing of its own when the command runs.
 - **Asks:** on moderate signals it asks for confirmation on a terminal, and blocks when there
   is no terminal (`--on-ask allow` runs it anyway).
-- **Errors:** API rejections (HTTP 403) block by default. Without a key or network it runs
-  the command (`--on-error deny` fails closed instead, for unattended jobs).
+- **Errors:** invalid or oversized input and API rejections (HTTP 400, 403, 413, or 422)
+  block by default. The safety hook's input limits also apply here, including the quoted
+  representation used to judge direct arguments. Without a key or network it runs the
+  command (`--on-error deny` fails closed instead, for unattended jobs).
 - **One argument** is run by the shell; several are run directly without one.
 
 ## GitHub Action

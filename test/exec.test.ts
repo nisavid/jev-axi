@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { configureFetch } from "../src/client.js";
 import { main } from "../src/cli.js";
 import { BLOCKED_EXIT, shellJoin } from "../src/commands/exec.js";
+import { MAX_SAFETY_COMMAND_BYTES } from "../src/safety.js";
 
 /** Fake API that scores every hazard at `noul` and risk at `risk`. */
 function fakeApi(noul: number, risk: number) {
@@ -131,6 +132,46 @@ describe("guard-exec", () => {
     await main(["guard-exec", "--quiet", "--", ...node(`require("fs").writeFileSync(${JSON.stringify(marker)}, "x")`)], stdout);
     expect(process.exitCode).toBe(BLOCKED_EXIT);
     expect(existsSync(marker)).toBe(false);
+  });
+
+  it.each([undefined, "auto"])("blocks oversized shell and argv commands with on-error %s before running or calling the API", async (policy) => {
+    const calls = fakeApi(0.05, 0);
+    const argv = node(`require('node:fs').writeFileSync('oversized-marker', 'x'); //${" ".repeat(MAX_SAFETY_COMMAND_BYTES)}`);
+    for (const command of [argv, [shellJoin(argv)]]) {
+      await main(["guard-exec", "--quiet", ...(policy ? ["--on-error", policy] : []), "--", ...command], stdout);
+      expect(process.exitCode).toBe(BLOCKED_EXIT);
+      expect(existsSync(join(dir, "oversized-marker"))).toBe(false);
+      expect(calls()).toBe(0);
+      process.exitCode = 0;
+    }
+  });
+
+  it("omits oversized command content from blocked stderr", async () => {
+    const calls = fakeApi(0.05, 0);
+    const secret = "private-test-value";
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    try {
+      await main(["guard-exec", "--", ...node(`process.exit(0); // API_KEY=${secret} ${" ".repeat(MAX_SAFETY_COMMAND_BYTES)}`)], stdout);
+      const message = stderr.mock.calls.map(([chunk]) => String(chunk)).join("");
+      expect(process.exitCode).toBe(BLOCKED_EXIT);
+      expect(calls()).toBe(0);
+      expect(message).toContain("not running");
+      expect(message).toContain("input invalid");
+      expect(message).not.toContain(secret);
+      expect(message).not.toContain("process.exit");
+    } finally {
+      stderr.mockRestore();
+    }
+  });
+
+  it.each([400, 413, 422])("does not run after an HTTP %s invalid-input response under default or explicit auto", async (status) => {
+    configureFetch((async () => new Response(JSON.stringify({ detail: "max_tokens_exceeded" }), { status, headers: { "content-type": "application/json" } })) as any);
+    for (const policy of [undefined, "auto"]) {
+      await main(["guard-exec", "--quiet", ...(policy ? ["--on-error", policy] : []), "--", ...node("require('node:fs').writeFileSync('invalid-marker', 'x')")], stdout);
+      expect(process.exitCode).toBe(BLOCKED_EXIT);
+      expect(existsSync(join(dir, "invalid-marker"))).toBe(false);
+      process.exitCode = 0;
+    }
   });
 
   it("dry-run reports the decision without running, and --help after -- belongs to the command", async () => {

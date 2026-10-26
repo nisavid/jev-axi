@@ -16,13 +16,15 @@ Safety-check a shell command, then run it. The same check as the agent safety ho
 and scripts: routine commands are decided locally; others are sent to Jev with secrets redacted, together with the
 contents of local scripts they run, and scored for destructive actions, exfiltration, running downloaded code,
 weakening security, and changes outside the current directory.
+Commands are limited to 16 KiB of UTF-8 before local checks or redaction; the complete safety state is limited
+to 24 KiB of serialized JSON before and after redaction. Oversized input is rejected, never truncated to decide the original command.
 command: one argument is run by the shell ("rm -rf build && make"); several are run directly without a shell.
 exit code: the command's own exit status when it runs; ${BLOCKED_EXIT} when it is blocked; 2 for usage errors.
 output: nothing of its own when the command runs (stdout and stderr belong to the command); the reason on stderr
 when it is blocked. Decisions that reach Jev are logged to ~/.config/jev-axi/stats/safety.jsonl.
 flags:
   --on-ask <mode>      when the check wants approval: prompt (default; on a terminal, otherwise deny), deny, allow
-  --on-error <mode>    auto (default: deny API 403, allow other errors), allow, or deny
+  --on-error <mode>    auto (default: deny invalid/oversized input and API 403, allow unavailable checks), allow, or deny
   --dry-run            print the decision and scores without running the command; exit 0 if it would run, ${BLOCKED_EXIT} if not
   --quiet              no stderr note when a command is blocked
 examples:
@@ -99,7 +101,7 @@ export async function guardExecCommand(args: string[]): Promise<Renderable> {
   if (!proceed) {
     if (!p.bools["--quiet"]) {
       const why = j.decision === "ask" && onAsk === "prompt" ? " (no terminal to confirm on; pass --on-ask allow to run it unattended)" : "";
-      process.stderr.write(`jev-axi guard-exec: not running \`${command}\`\n${j.reason}${why}\n`);
+      process.stderr.write(`jev-axi guard-exec: not running\n${j.reason}${why}\n`);
     }
     process.exitCode = BLOCKED_EXIT;
     return "";

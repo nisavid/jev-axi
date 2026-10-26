@@ -313,6 +313,9 @@ function translateError(error: unknown): AxiError {
       "Send less state: lower --preview, --tail, or the number of items; batch commands chunk automatically but a single item can still be too large",
     ]);
   }
+  if (error instanceof APIError && (error.status === 400 || error.status === 413)) {
+    return new AxiError(`Request rejected by the API (${error.status}): ${detail(error.body)}`, "VALIDATION_ERROR");
+  }
   if (error instanceof APIError) {
     // A 403 that answers with HTML comes from a firewall/proxy edge in front of api.typesafe.ai,
     // not from the API: the request never reached the model, so this is unavailability (fail open
