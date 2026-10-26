@@ -166,7 +166,7 @@ describe("revision-bound runtime", () => {
     // add system variables during startup even when spawn receives an explicit env.
     const baseline = spawnSync(process.execPath, ["-e", "console.log(JSON.stringify(process.env))"], {
       encoding: "utf8", shell: false,
-      env: { SystemRoot: process.env.SystemRoot ?? "", TYPESAFE_API_KEY: "k", NO_UPDATE_NOTIFIER: "1" },
+      env: { SystemRoot: process.env.SystemRoot ?? "", TYPESAFE_API_KEY: "k", NO_UPDATE_NOTIFIER: "1", ...(process.platform === "win32" ? { PATH: "" } : {}) },
     });
     expect(baseline.status).toBe(0);
     expect(call.env).toEqual(JSON.parse(baseline.stdout));
