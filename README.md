@@ -417,6 +417,12 @@ review, never), `max-files` (default 100), `pr-number`, `log-file`, `run-id`, `v
 `model`. Outputs: `verdict`, `flagged`, `root-cause`, `comment-url`. See
 [action.yml](action.yml). Pin `@v0` for the latest 0.x, or an exact version such as `@v0.4.0`.
 
+The fork's Action executes the CLI and dependencies bundled at its selected
+revision, with no runtime package installation. Pin an immutable commit of
+`nisavid/jev-axi` to bind execution to reviewed code. The optional `version` input
+must match the bundled version. The CLI receives the TypeSafe key and OS/TLS/proxy
+settings; GitHub tokens and raw Action inputs remain in the wrapper.
+
 ## Git hooks
 
 ```sh

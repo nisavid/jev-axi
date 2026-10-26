@@ -40,18 +40,18 @@ async function github(path, { method = "GET", body, accept = "application/vnd.gi
   return (res.headers.get("content-type") ?? "").includes("json") ? res.json() : res.text();
 }
 
-/** Run jev-axi with --json. JEV_AXI_BIN (a JSON array of argv) overrides the npx invocation, for testing. */
+/** Execute only the CLI shipped with this Action revision. */
 function jevAxi(args, stdin) {
-  const version = input("version") || JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
-  const [cmd, ...pre] = env.JEV_AXI_BIN ? JSON.parse(env.JEV_AXI_BIN) : ["npx", "-y", `jev-axi@${version}`];
+  // Keep OS/config and explicit TLS/proxy settings; exclude raw inputs, tokens,
+  // Node injection, npm configuration, and SDK endpoint overrides.
+  const childEnv = { TYPESAFE_API_KEY: input("api-key"), NO_UPDATE_NOTIFIER: "1" };
+  for (const name of ["SystemRoot", "WINDIR", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "TMPDIR", "TMP", "TEMP", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "NODE_EXTRA_CA_CERTS", "NODE_USE_SYSTEM_CA", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_USE_ENV_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"]) {
+    if (env[name] !== undefined) childEnv[name] = env[name];
+  }
   const model = input("model");
-  const r = spawnSync(cmd, [...pre, ...args, "--json", ...(model ? ["--model", model] : [])], {
-    input: stdin,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-    // npx is a .cmd script on Windows, which needs a shell.
-    shell: process.platform === "win32" && !env.JEV_AXI_BIN,
-    env: { ...env, TYPESAFE_API_KEY: input("api-key") },
+  const r = spawnSync(process.execPath, [join(import.meta.dirname, "runtime", "jev-axi.mjs"), ...args, "--json", ...(model ? ["--model", model] : [])], {
+    input: stdin, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+    shell: false, env: childEnv,
   });
   const out = (r.stdout ?? "").trim();
   if (r.status === 0) {
@@ -154,6 +154,8 @@ try {
   if (!input("api-key")) {
     notice("No api-key: skipped. Secrets are not passed to workflows triggered from forks; see the README for workflow_run.");
   } else {
+    const version = JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
+    if (input("version") && input("version") !== version) throw new Error(`This Action bundles jev-axi ${version}; select another Action ref to change versions.`);
     const mode = input("mode", "review");
     if (mode === "review") await review();
     else if (mode === "triage") await triage();

@@ -33,7 +33,7 @@ inputs:
     description: triage mode; the workflow run whose failed jobs to triage. Defaults to the workflow_run event's run.
     default: ""
   version:
-    description: jev-axi version to run. Defaults to the version of this action.
+    description: Optional assertion of the bundled version. Select another Action ref to change versions.
     default: ""
   model:
     description: Jev model, e.g. jev-preview. Defaults to jev-axi's default.
