@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -162,7 +162,17 @@ describe("revision-bound runtime", () => {
     expect(r.code, r.stdout).toBe(0);
     expect(r.outputs).toContain("root-cause=Error: boom");
     const call = JSON.parse(readFileSync(capture, "utf8"));
-    expect(call.env).toEqual({ SystemRoot: process.env.SystemRoot ?? "", TYPESAFE_API_KEY: "k", NO_UPDATE_NOTIFIER: "1" });
+    // Compare with an equally restricted native Node child: Windows and macOS
+    // add system variables during startup even when spawn receives an explicit env.
+    const baseline = spawnSync(process.execPath, ["-e", "console.log(JSON.stringify(process.env))"], {
+      encoding: "utf8", shell: false,
+      env: { SystemRoot: process.env.SystemRoot ?? "", TYPESAFE_API_KEY: "k", NO_UPDATE_NOTIFIER: "1" },
+    });
+    expect(baseline.status).toBe(0);
+    expect(call.env).toEqual(JSON.parse(baseline.stdout));
+    for (const name of ["JEV_INPUT_GITHUB_TOKEN", "JEV_INPUT_API_KEY", "GH_TOKEN", "GITHUB_TOKEN", "UNRELATED_SECRET", "NODE_OPTIONS", "NODE_PATH", "npm_config_registry", "TYPESAFE_BASE_URL", "JEV_AXI_BIN"]) {
+      expect(call.env).not.toHaveProperty(name);
+    }
     expect(call.args).toEqual(["triage", "-", "--json", "--model", "jev-preview"]);
   });
   it.each(["latest", "file:/tmp/evil", "https://attacker.invalid/cli.tgz", "0.7.2 --package evil"])("rejects version %s in both modes", async (version) => {
