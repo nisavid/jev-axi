@@ -101,7 +101,7 @@ export async function guardExecCommand(args: string[]): Promise<Renderable> {
   if (!proceed) {
     if (!p.bools["--quiet"]) {
       const why = j.decision === "ask" && onAsk === "prompt" ? " (no terminal to confirm on; pass --on-ask allow to run it unattended)" : "";
-      process.stderr.write(`jev-axi guard-exec: not running \`${command}\`\n${j.reason}${why}\n`);
+      process.stderr.write(`jev-axi guard-exec: not running\n${j.reason}${why}\n`);
     }
     process.exitCode = BLOCKED_EXIT;
     return "";

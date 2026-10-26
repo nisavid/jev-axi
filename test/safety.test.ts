@@ -176,6 +176,10 @@ describe("safety input limits", () => {
     expect(() => buildSafetyState(bash(unicode + "☃"))).toThrow("command exceeds");
     expect(() => buildSafetyState(bash("API_KEY=" + "a".repeat(MAX_SAFETY_COMMAND_BYTES)))).toThrow("command exceeds");
     expect(() => buildSafetyState({ tool_name: "Bash", tool_input: { command: ["true"] } })).toThrow("must be a string");
+    for (const command of [null, undefined]) {
+      expect(() => buildSafetyState({ tool_name: "Bash", tool_input: { command } })).toThrow("must be a string");
+    }
+    expect((buildSafetyState(bash("")) as any).command).toBe("");
   });
 
   it("counts metadata and JSON escaping in the complete serialized state", () => {
@@ -222,7 +226,7 @@ describe("API rejection policy", () => {
     ])));
     try {
       configureFetch((async () => { requests++; throw new Error("unexpected request"); }) as any);
-      for (const command of ["env " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), "echo " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), ["true"], 42]) {
+      for (const command of ["env " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), "echo " + " ".repeat(MAX_SAFETY_COMMAND_BYTES), ["true"], 42, null, undefined]) {
         expect(await run({ tool_name: "Bash", tool_input: { command } })).toMatchObject({ decision: "deny", source: "error" });
       }
       const scripts = Array.from({ length: 7 }, (_, i) => `./script-${i}.sh`);

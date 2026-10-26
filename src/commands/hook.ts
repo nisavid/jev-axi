@@ -122,7 +122,7 @@ export async function judgeToolCall(
   let summary = "[input omitted: safety validation failed]";
   let j: Judgment;
   try {
-    if (call.tool_name === "Bash") validateSafetyCommand(call.tool_input?.["command"] ?? "");
+    if (call.tool_name === "Bash") validateSafetyCommand(call.tool_input?.["command"]);
     const local = localVerdict(call);
     if (local.decision === "allow") return { decision: "allow", source: "local", reason: local.reason, detail: {} };
     const state = buildSafetyState(call);

@@ -161,7 +161,7 @@ export function buildSafetyState(call: ToolCall): EntryType {
   const input = call.tool_input ?? {};
   const state: Record<string, EntryType> = { tool: call.tool_name, cwd };
   if (call.tool_name === "Bash") {
-    const command = input["command"] ?? "";
+    const command = input["command"];
     validateSafetyCommand(command);
     state["command"] = command;
     validateSafetyState(state);
