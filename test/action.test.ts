@@ -11,6 +11,8 @@ import { parse } from "yaml";
 import { countDiffFiles, renderReview, renderTriage, REVIEW_MARKER, trimJobLog } from "../action/lib.mjs";
 
 const RUN = resolve(__dirname, "..", "action", "run.mjs");
+const PRELOAD = resolve(__dirname, "fixtures", "action-preload.mjs");
+const SENTINEL = resolve(__dirname, "fixtures", "action-sentinel.mjs");
 const temporary: string[] = [];
 function tempDir() {
   const dir = mkdtempSync(join(tmpdir(), "jev-action-test-"));
@@ -98,36 +100,19 @@ async function fakeGitHub(existingComment: boolean, jobs: object[] = []) {
 }
 
 type Call = { cmd: string; args: string[]; options: { cwd: string; env: Record<string, string>; shell: boolean; input?: string } };
+type Fixture = { response: object; diagnostic?: boolean };
 function runAction(envOverrides: Record<string, string>, fixture = fakeJevAxi("ok"), installStatus = 0, cwd = tempDir(), lateEnv: Record<string, string> = {}): Promise<{ code: number; stdout: string; outputs: string; summary: string; calls: Call[] }> {
   const dir = tempDir();
   const outputs = join(dir, "outputs");
   const calls = join(dir, "calls.jsonl");
-  const preload = join(dir, "preload.mjs");
+  const config = join(dir, "fixture-config.json");
   writeFileSync(outputs, "");
   // Test-only injection. Production has no environment flag or alternate runner.
   // Only npm installation is replaced; the installed stand-in runs as a real child.
-  writeFileSync(preload, `
-    import cp from 'node:child_process';
-    import { syncBuiltinESMExports } from 'node:module';
-    import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-    import { join, dirname } from 'node:path';
-    const spawnSync = cp.spawnSync;
-    cp.spawnSync = (cmd, args, options) => {
-      appendFileSync(${JSON.stringify(calls)}, JSON.stringify({ cmd, args, options }) + '\\n');
-      if (args[1] === 'install') {
-        const cli = join(options.cwd, 'node_modules/jev-axi/dist/bin/jev-axi.js');
-        mkdirSync(dirname(cli), { recursive: true });
-        writeFileSync(cli, ${JSON.stringify(fixture)});
-        return { status: ${installStatus}, stdout: '', stderr: 'installation unavailable' };
-      }
-      return spawnSync(cmd, args, options);
-    };
-    Object.assign(process.env, ${JSON.stringify(lateEnv)});
-    syncBuiltinESMExports();
-  `);
-  const env = { PATH: process.env["PATH"] ?? "", SystemRoot: process.env["SystemRoot"] ?? "", GITHUB_REPOSITORY: "o/r", GITHUB_OUTPUT: outputs, GITHUB_STEP_SUMMARY: join(dir, "summary"), JEV_INPUT_GITHUB_TOKEN: "t", ...envOverrides };
+  writeFileSync(config, JSON.stringify({ calls, fixture, installStatus, lateEnv }));
+  const env = { PATH: process.env["PATH"] ?? "", SystemRoot: process.env["SystemRoot"] ?? "", GITHUB_REPOSITORY: "o/r", GITHUB_OUTPUT: outputs, GITHUB_STEP_SUMMARY: join(dir, "summary"), JEV_INPUT_GITHUB_TOKEN: "t", ...envOverrides, JEV_ACTION_TEST_CONFIG: config };
   return new Promise((resolveRun) => {
-    const child = spawn(process.execPath, ["--import", pathToFileURL(preload).href, RUN], { env, cwd });
+    const child = spawn(process.execPath, ["--import", pathToFileURL(PRELOAD).href, RUN], { env, cwd });
     let stdout = "";
     child.stdout.on("data", (d) => (stdout += d));
     child.stderr.on("data", (d) => (stdout += d));
@@ -139,10 +124,10 @@ function runAction(envOverrides: Record<string, string>, fixture = fakeJevAxi("o
 }
 
 /** A stand-in for `jev-axi diff - --json --full` that returns a fixed verdict. */
-function fakeJevAxi(verdict: string): string {
+function fakeJevAxi(verdict: string): Fixture {
   const out = review(verdict, [{ file: "x.js", "+/-": "+1/-0", risk: 1, band: "act", flags: verdict === "ok" ? "-" : "secrets" }]);
   // Stray output before the JSON must not break parsing.
-  return `process.stdin.resume(); process.stdin.on("end", () => { console.log("diagnostic output"); console.log(${JSON.stringify(JSON.stringify(out, null, 2))}); });`;
+  return { response: out, diagnostic: true };
 }
 
 describe("action run", () => {
@@ -200,11 +185,11 @@ describe("action run", () => {
   it.each(["not JSON", "executable"])("ignores an inherited executable override (%s) in local-log triage", async (override) => {
     const dir = tempDir();
     const marker = join(dir, "executed");
-    const selector = override === "executable" ? JSON.stringify([process.execPath, "-e", `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`]) : override;
+    const selector = override === "executable" ? JSON.stringify([process.execPath, SENTINEL, marker]) : override;
     const log = join(dir, "job.log");
     writeFileSync(log, "Error: boom\n");
     const triage = { root_cause: { line: 1, p: 0.9, text: "Error: boom" }, category: "test", flaky: "0.1", severity: "total", context: [] };
-    const fixture = `process.stdin.resume(); process.stdin.on('end', () => console.log(${JSON.stringify(JSON.stringify(triage))}));`;
+    const fixture = { response: triage };
     const r = await runAction({ JEV_AXI_BIN: selector, JEV_INPUT_API_KEY: "k", JEV_INPUT_MODE: "triage", JEV_INPUT_LOG_FILE: log }, fixture);
     expect(r.code).toBe(0);
     expect(r.outputs).toContain("root-cause=Error: boom");
@@ -253,7 +238,7 @@ describe("action run", () => {
     const gh = await fakeGitHub(false, [{ id: 1, name: "test", conclusion: "failure" }, { id: 2, name: "build", conclusion: "failure" }]);
     const triage = { root_cause: { line: 1, p: 0.9, text: "Error: job failed" }, category: "test", flaky: "0.1", severity: "total", context: [] };
     try {
-      const r = await runAction({ GITHUB_API_URL: gh.url, JEV_INPUT_API_KEY: "k", JEV_INPUT_MODE: "triage", JEV_INPUT_RUN_ID: "42" }, `process.stdin.resume(); process.stdin.on('end', () => console.log(${JSON.stringify(JSON.stringify(triage))}));`);
+      const r = await runAction({ GITHUB_API_URL: gh.url, JEV_INPUT_API_KEY: "k", JEV_INPUT_MODE: "triage", JEV_INPUT_RUN_ID: "42" }, { response: triage });
       expect(r.code).toBe(0);
       expect(r.calls).toHaveLength(3);
       expect(r.calls[0]!.args.at(-1)).toBe("jev-axi@0.7.2");
