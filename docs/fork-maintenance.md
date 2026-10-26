@@ -58,6 +58,11 @@ API key and network access, may incur API charges, and run separately; see the
 
 Edit canonical help text before `pnpm build:skill`. Keep `dist/`, dependencies,
 fixture state, transcripts, and generated candidate archives out of Git.
+The Action runtime is the exception: commit `action/runtime/` (bundle and license
+notices), regenerated with `pnpm build:action` after source or dependency changes.
+`pnpm verify` checks byte reproducibility with `pnpm check:action`. The Action
+runs only this revision's runtime and restricts the CLI child environment;
+`version` asserts the bundled version rather than selecting a registry package.
 
 Bind each candidate manifest to the source and upstream commits, clean tree,
 lockfile digest, Node and package-manager versions, installed dependencies,
