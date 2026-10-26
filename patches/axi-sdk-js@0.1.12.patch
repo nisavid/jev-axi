@@ -1,0 +1,13 @@
+diff --git a/dist/update.js b/dist/update.js
+index 2699809c1bd8c29f6452386420bf6c98f516d3de..7ca09a0972a851265b314a944e1b403c7eacb108 100644
+--- a/dist/update.js
++++ b/dist/update.js
+@@ -328,7 +328,7 @@ async function npmViewVersion(packageName, platform = process.platform) {
+ function registryPath(packageName) {
+     // Scoped names encode only the slash; the registry expects a literal `@`.
+     return packageName.startsWith("@")
+-        ? packageName.replace("/", "%2f")
++        ? packageName.replaceAll("/", "%2f")
+         : packageName;
+ }
+ function notPublishedError(packageName) {

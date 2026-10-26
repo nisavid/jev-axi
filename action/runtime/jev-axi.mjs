@@ -57,7 +57,7 @@ var init_version = __esm({
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/errors.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/errors.js
 function exitCodeForError(error) {
   if (error instanceof AxiError && error.code === "VALIDATION_ERROR") {
     return 2;
@@ -66,7 +66,7 @@ function exitCodeForError(error) {
 }
 var AxiError;
 var init_errors = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/errors.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/errors.js"() {
     AxiError = class extends Error {
       code;
       suggestions;
@@ -490,7 +490,7 @@ var init_dist = __esm({
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/output.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/output.js
 import { homedir } from "node:os";
 function collapseHomeDirectory(path, homeDir = homedir()) {
   if (!path.startsWith(homeDir)) {
@@ -524,12 +524,12 @@ function renderError(message, code, suggestions = []) {
   return renderOutput(errorOutput(message, code, suggestions));
 }
 var init_output = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/output.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/output.js"() {
     init_dist();
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/update.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/update.js
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
@@ -818,7 +818,7 @@ async function npmViewVersion(packageName, platform = process.platform) {
   }
 }
 function registryPath(packageName) {
-  return packageName.startsWith("@") ? packageName.replace("/", "%2f") : packageName;
+  return packageName.startsWith("@") ? packageName.replaceAll("/", "%2f") : packageName;
 }
 function notPublishedError(packageName) {
   return new AxiError(`${packageName} is not published to the npm registry`, "UPDATE_ERROR", [
@@ -1043,7 +1043,7 @@ async function runUpdate(options) {
 }
 var execFileAsync, REGISTRY_BASE, REGISTRY_FETCH_TIMEOUT_MS, nodeFs, RegistryNotFoundError;
 var init_update = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/update.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/update.js"() {
     init_errors();
     execFileAsync = promisify(execFile);
     REGISTRY_BASE = "https://registry.npmjs.org";
@@ -1057,7 +1057,7 @@ var init_update = __esm({
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/cli.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/cli.js
 import { basename as basename2 } from "node:path";
 function defaultFormatError(error) {
   if (error instanceof AxiError) {
@@ -1246,7 +1246,7 @@ function mergeHomeHeader(header, output) {
 }
 var stdoutWithErrorHandler;
 var init_cli = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/cli.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/cli.js"() {
     init_errors();
     init_output();
     init_update();
@@ -1254,7 +1254,7 @@ var init_cli = __esm({
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/hooks.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/hooks.js
 import { existsSync as existsSync2, mkdirSync, readFileSync as readFileSync2, realpathSync as realpathSync2, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
 import { basename as basename3, delimiter, dirname as dirname2, join as join2, resolve } from "node:path";
@@ -1736,7 +1736,7 @@ function sessionStartHookStatus(options = {}) {
 }
 var OPENCODE_PLUGIN_MANAGED_PREFIX, NPM_SHIM_SCRIPT_PATTERNS;
 var init_hooks = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/hooks.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/hooks.js"() {
     OPENCODE_PLUGIN_MANAGED_PREFIX = "axi-sdk-js managed opencode plugin:";
     NPM_SHIM_SCRIPT_PATTERNS = [
       // Git Bash / POSIX shim: exec node "$basedir/node_modules/<pkg>/.../cli.js"
@@ -1747,9 +1747,9 @@ var init_hooks = __esm({
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/index.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/index.js
 var init_dist2 = __esm({
-  "node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/index.js"() {
+  "node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/index.js"() {
     init_cli();
     init_errors();
     init_hooks();
@@ -14755,7 +14755,7 @@ examples:
   }
 });
 
-// node_modules/.pnpm/axi-sdk-js@0.1.12/node_modules/axi-sdk-js/dist/fast-path.js
+// node_modules/.pnpm/axi-sdk-js@0.1.12_patch_hash=b7cadd2b2f2866260551e11ed8549ff2ba29069f7e2db67f3f929cb1733e7838/node_modules/axi-sdk-js/dist/fast-path.js
 function tryFastPath(argv, options) {
   if (argv.length !== 1) {
     return false;
