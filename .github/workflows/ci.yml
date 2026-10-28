@@ -22,3 +22,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      - id: caller-node
+        run: node -e "require('node:fs').appendFileSync(process.env.GITHUB_OUTPUT, 'node=' + process.execPath + '\n')"
+      - name: Exercise composite Action without credentials
+        uses: ./
+        with:
+          api-key: ""
+          github-token: ""
+          comment: "false"
+      - name: Preserve caller Node selection
+        run: node -e "require('node:assert/strict').equal(process.execPath, process.env.EXPECTED_NODE)"
+        env:
+          EXPECTED_NODE: ${{ steps.caller-node.outputs.node }}
