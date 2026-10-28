@@ -58,6 +58,11 @@ API key and network access, may incur API charges, and run separately; see the
 
 Edit canonical help text before `pnpm build:skill`. Keep `dist/`, dependencies,
 fixture state, transcripts, and generated candidate archives out of Git.
+The Action runtime is the exception: commit `action/runtime/` (bundle and license
+notices), regenerated with `pnpm build:action` after source or dependency changes.
+`pnpm verify` checks byte reproducibility with `pnpm check:action`. The Action
+runs only this revision's runtime and restricts the CLI child environment;
+`version` asserts the bundled version rather than selecting a registry package.
 
 Bind each candidate manifest to the source and upstream commits, clean tree,
 lockfile digest, Node and package-manager versions, installed dependencies,
@@ -97,3 +102,13 @@ Keep fork-only maintenance commits out of a proposed upstream contribution.
 When upstream supplies the desired behavior, compare its contract and qualify
 the replacement. Present removal of the local patch and any fork retirement as
 a decision; preserve the last verified candidate until migration is accepted.
+
+## Pinned dependency correction
+
+`patches/axi-sdk-js@0.1.12.patch` changes the SDK registry-path helper to encode
+every slash in scoped names. Valid scoped and unscoped package names retain
+their existing URLs. The exact-version patch and digest are recorded in the
+pnpm configuration and lockfile; `test/dependency-registry.test.ts` verifies
+the registry requests without network or npm fallback. Regenerate the Action
+bundle after changing this patch. Preserve it until a qualified dependency
+version supplies the correction. This is not general package-name validation.

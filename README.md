@@ -372,7 +372,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: shiftynick/jev-axi@v0
+      - uses: nisavid/jev-axi@fe4cb3cdb9239f26a98d8c57175ed38c8e5c0858
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
@@ -398,7 +398,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     steps:
-      - uses: shiftynick/jev-axi@v0
+      - uses: nisavid/jev-axi@fe4cb3cdb9239f26a98d8c57175ed38c8e5c0858
         with:
           mode: triage
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
@@ -412,18 +412,23 @@ to a file and add a step with `if: failure()`, `mode: triage`, and `log-file: te
 quietly there. `workflow_run` runs in your repository with secrets, which is why the triage
 example uses it. Avoid `pull_request_target` for review.
 
-The action selects Node 24 and installs the requested public npm version in a temporary
-runtime, with install scripts disabled and no credentials in the installer environment.
-It then runs that CLI directly with the TypeSafe key; the GitHub token stays in the
-action process. Job-level executable overrides, npm configuration, and user CLI settings
-are not inherited. Set `version` and `model` through action inputs. The runtime is removed
-when the action finishes. Use a separate privileged job when processing untrusted code;
-earlier code in the same job can modify shared files and runner state.
+The secret-bearing step selects a trusted Node 24 distribution and ignores inherited
+Bash functions, startup hooks, and Node/native loader controls. The bundled CLI uses
+its fixed entry point rather than a job-level executable override. Use a separate
+privileged job for untrusted code: earlier steps can still alter shared files and
+runner state.
 
 Inputs: `api-key`, `mode` (review, triage), `comment` (default true), `fail-on` (block,
 review, never), `max-files` (default 100), `pr-number`, `log-file`, `run-id`, `version`,
 `model`. Outputs: `verdict`, `flagged`, `root-cause`, `comment-url`. See
-[action.yml](action.yml). Pin `@v0` for the latest 0.x, or an exact version such as `@v0.4.0`.
+[action.yml](action.yml). Both examples pin the same reviewed fork revision;
+update that commit deliberately when adopting a newer Action runtime.
+
+The fork's Action executes the CLI and dependencies bundled at its selected
+revision, with no runtime package installation. Pin an immutable commit of
+`nisavid/jev-axi` to bind execution to reviewed code. The optional `version` input
+must match the bundled version. The CLI receives the TypeSafe key and OS/TLS/proxy
+settings; GitHub tokens and raw Action inputs remain in the wrapper.
 
 ## Git hooks
 

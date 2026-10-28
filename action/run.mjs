@@ -1,8 +1,8 @@
 // Entry point for the jev-axi GitHub Action. Dependency-free: Node built-ins and fetch only.
+import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { countDiffFiles, renderReview, renderTriage, REVIEW_MARKER, TRIAGE_MARKER, trimJobLog } from "./lib.mjs";
-import { createRuntime } from "./runtime.mjs";
 
 const env = process.env;
 const input = (name, fallback = "") => (env[`JEV_INPUT_${name.toUpperCase().replace(/-/g, "_")}`] ?? "").trim() || fallback;
@@ -40,12 +40,30 @@ async function github(path, { method = "GET", body, accept = "application/vnd.gi
   return (res.headers.get("content-type") ?? "").includes("json") ? res.json() : res.text();
 }
 
-let runtime;
-/** Both modes use the same isolated CLI runtime; no environment executable override. */
+/** Execute only the CLI shipped with this Action revision. */
 function jevAxi(args, stdin) {
-  const version = input("version") || JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
-  runtime ??= createRuntime(version);
-  return runtime.run(args, stdin, input("api-key"), input("model"));
+  // Keep OS/config and explicit TLS/proxy settings; exclude raw inputs, tokens,
+  // Node injection, npm configuration, and SDK endpoint overrides.
+  const childEnv = { TYPESAFE_API_KEY: input("api-key"), NO_UPDATE_NOTIFIER: "1" };
+  for (const name of ["SystemRoot", "WINDIR", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "TMPDIR", "TMP", "TEMP", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "NODE_EXTRA_CA_CERTS", "NODE_USE_SYSTEM_CA", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_USE_ENV_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"]) {
+    if (env[name] !== undefined) childEnv[name] = env[name];
+  }
+  const model = input("model");
+  const r = spawnSync(process.execPath, [join(import.meta.dirname, "runtime", "jev-axi.mjs"), ...args, "--json", ...(model ? ["--model", model] : [])], {
+    input: stdin, encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+    shell: false, env: childEnv,
+  });
+  const out = (r.stdout ?? "").trim();
+  if (r.status === 0) {
+    // The JSON document starts at the first line that opens an object; tolerate stray output before it.
+    const start = out.startsWith("{") ? 0 : out.indexOf("\n{") + 1;
+    try {
+      if (start >= 0) return JSON.parse(out.slice(start));
+    } catch {
+      // fall through
+    }
+  }
+  throw new Error((out || r.stderr || r.error?.message || `exit ${r.status}`).split("\n").slice(0, 3).join(" "));
 }
 
 /** Create or update this action's comment on a pull request. */
@@ -136,6 +154,8 @@ try {
   if (!input("api-key")) {
     notice("No api-key: skipped. Secrets are not passed to workflows triggered from forks; see the README for workflow_run.");
   } else {
+    const version = JSON.parse(readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")).version;
+    if (input("version") && input("version") !== version) throw new Error(`This Action bundles jev-axi ${version}; select another Action ref to change versions.`);
     const mode = input("mode", "review");
     if (mode === "review") await review();
     else if (mode === "triage") await triage();
@@ -144,6 +164,4 @@ try {
 } catch (error) {
   console.log(`::error title=jev-axi::${error.message}`);
   process.exitCode = 1;
-} finally {
-  runtime?.cleanup();
 }
