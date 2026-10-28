@@ -412,6 +412,21 @@ to a file and add a step with `if: failure()`, `mode: triage`, and `log-file: te
 quietly there. `workflow_run` runs in your repository with secrets, which is why the triage
 example uses it. Avoid `pull_request_target` for review.
 
+At revisions containing this hardening, the Action selects preinstalled Node 22+
+without changing the caller's PATH or selected Node version. Absolute privileged
+Bash ignores inherited functions/startup hooks, and both startup boundaries clear
+Node/native loader, OpenSSL provider, and TLS-disable overrides. The example pins
+above predate these launch protections; adopt a reviewed revision containing them.
+The bundled CLI uses its fixed entry point rather than a job-level executable
+override. Use a separate privileged job for untrusted code: earlier steps can still
+alter shared files and runner state.
+
+GitHub-hosted Linux, macOS, and Windows runners are supported. Self-hosted runners
+must preinstall Node 22 or 24 in the runner tool cache, or Node 22+ at the standard
+platform installation path. Bash must be available at `/bin/bash` on Linux/macOS
+or `C:/PROGRA~1/Git/bin/bash.exe` (the Program Files short path) on Windows.
+The Action installs no runtime.
+
 Inputs: `api-key`, `mode` (review, triage), `comment` (default true), `fail-on` (block,
 review, never), `max-files` (default 100), `pr-number`, `log-file`, `run-id`, `version`,
 `model`. Outputs: `verdict`, `flagged`, `root-cause`, `comment-url`. See
