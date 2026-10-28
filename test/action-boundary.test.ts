@@ -6,6 +6,7 @@ import { afterEach, expect, it } from "vitest";
 import { parse } from "yaml";
 
 const dirs: string[] = [];
+/** Allocate a fixture directory that the suite removes after each test. */
 function tempDir() {
   const dir = mkdtempSync(join(tmpdir(), "jev-action-boundary-"));
   dirs.push(dir);
@@ -16,6 +17,7 @@ afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: tru
 const action = parse(readFileSync(resolve(__dirname, "..", "action.yml"), "utf8"));
 const nodeStep = action.runs.steps.find((s: { id?: string }) => s.id === "node");
 const runStep = action.runs.steps.find((s: { id?: string }) => s.id === "run");
+/** Resolve only the literal platform alternatives using the runner's shell parser. */
 function shellCommand(step: { shell: string }) {
   // Match the two literal alternatives, without evaluating GitHub expressions.
   const match = step.shell.match(/^\$\{\{ runner.os == 'Windows' && '([^']+)' \|\| '([^']+)' \}\}$/);
@@ -25,6 +27,7 @@ function shellCommand(step: { shell: string }) {
   // The runner splits custom shell commands at the first space, even in quotes.
   return match![process.platform === "win32" ? 1 : 2].split(" ");
 }
+/** Retain literal resets without passing unevaluated Action expressions to a process. */
 function clearedEnvironment(step: { env: Record<string, string> }) {
   return Object.fromEntries(Object.entries(step.env).filter(([, value]) => value === ""));
 }
@@ -62,7 +65,7 @@ it("ignores inherited Bash functions and startup hooks before introducing Action
 it("selects a preinstalled absolute Node without changing the caller's PATH", () => {
   const dir = tempDir();
   const arch = process.arch === "arm64" ? "arm64" : "x64";
-  const bin = join(dir, "node", process.versions.node, arch, ...(process.platform === "win32" ? [] : ["bin"]));
+  const bin = join(dir, "node", "24.0.0", arch, ...(process.platform === "win32" ? [] : ["bin"]));
   mkdirSync(bin, { recursive: true });
   const node = join(bin, process.platform === "win32" ? "node.exe" : "node");
   if (process.platform === "win32") cpSync(process.execPath, node);
