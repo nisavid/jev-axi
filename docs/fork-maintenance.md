@@ -31,6 +31,16 @@ to approve their final content.
 | Candidate packages remain private | `package.json` | `private` is true; the fork has no public registry publishing configuration |
 | Fork automation performs no release or model-backed review publication | `.github/workflows/` | No inherited npm-release, major-tag, Jev review, or Jev triage workflow; ordinary CI remains |
 
+The fork keeps upstream's plain `pull_request` trigger to simplify upstream
+syncs. Changing only the base branch is an `edited` event, so it does not
+rerun `CI gate`. After a retarget, close and reopen the pull request or push
+a new commit to its head branch. Confirm that a `CI gate` run started by that
+reopen or push passed: a reopen leaves the earlier result on the same head
+commit, where it still satisfies the required check, and a head that
+conflicts with the new base gets no `pull_request` run until the conflict is
+resolved. When targeting `main`, strict checks require a branch update only
+if the head is behind `main`.
+
 Keep the upstream package and executable name `jev-axi`, its MIT license and
 attribution, and the upstream version in the behavior change. Identify a fork
 candidate by its full source commit and archive digest; `jev-axi --version`
