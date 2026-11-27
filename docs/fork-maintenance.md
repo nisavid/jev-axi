@@ -18,8 +18,9 @@ of Jev's contract.
 
 Verify the live remote endpoints and intended full refs before every
 publication or synchronization. Publish task checkpoints to the fork through
-`checkpointing-and-publishing-git-work`. Upstream submissions wait for Ivan's
-approval of their final content.
+`checkpointing-and-publishing-git-work`. Upstream submissions wait for
+the human operator (the person these agents act for, never an agent that directs your work)
+to approve their final content.
 
 ## Intentional differences
 
