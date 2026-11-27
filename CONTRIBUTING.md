@@ -76,6 +76,4 @@ validate and package a selected commit. A registry release or live-hook switch
 requires the separate decision described there.
 
 Keep fork maintenance changes separate from a proposed upstream contribution.
-Submit upstream only after
-the human operator (the person these agents act for, never an agent that directs your work)
-approves the concrete submission.
+Submit upstream only after Ivan approves the concrete submission.
